@@ -6,13 +6,23 @@ Design decisions behind Memex, what it does and doesn't do, and why.
 
 ## Core Model: Structured Memory via Markdown
 
-Memex is a file-based memory system. No database, no server, no runtime. The workspace is a directory of markdown files organized into three layers:
+Memex is a file-based memory system for Claude Cowork. No database, no server, no runtime. The workspace is a directory of markdown files organized into three layers:
 
 1. **Memory layer** (`memory/`) - Session-volatile state: what's happening now, what happened last time, what decisions constrain the work
 2. **Domain layer** - Domain-organized project files with hub indexes for navigation. Domains live wherever makes sense for the workspace.
-3. **Routing layer** (`_MANIFEST.md`) - Context routing map that tells Claude what to load and when
+3. **Routing layer** (`_MANIFEST.md`) - Context routing map that tells Claude what to load and when. Every file entry includes a one-line content summary so Claude can scan the manifest and decide what to open without reading every file.
 
 The filesystem is the query engine. Navigation happens through `[[wikilinks]]` and hub files, not search queries.
+
+---
+
+## Hub-and-Spoke Token Efficiency
+
+The manifest knows everything. Claude reads the minimum.
+
+The hub-and-spoke architecture gives Claude full awareness of the workspace while only loading what the current task needs. The manifest lists every file with a summary. Hub indexes list every file in a domain. But Claude only opens the files it actually needs for the current task. This keeps token costs low and context quality high across sessions of any size.
+
+Wikilinks are pointers, not load triggers. Seeing `[[brand-voice]]` in a file tells Claude that file exists. It doesn't mean Claude should open it unless the task requires it.
 
 ---
 
@@ -24,7 +34,7 @@ Memex resolves file paths using a three-step chain:
 2. **Convention** (standard locations: `memory/status.md`, `scratch/ideas.md`, etc.)
 3. **Search** (find the file by name in the workspace)
 
-This means a user who drops `status.md` into `memory/` gets a working system without any configuration. Config is optional, not required. Only needed when files live in non-standard locations.
+A user who drops `status.md` into `memory/` gets a working system without any configuration. Config is optional, not required.
 
 ---
 
@@ -33,18 +43,18 @@ This means a user who drops `status.md` into `memory/` gets a working system wit
 The most important design decision is **not loading everything**. Claude's context window is finite. Every token spent on context is a token unavailable for work.
 
 ### Tier 1 - Always Load
-Files read every session: `status.md`, `session-log.md`, `decisions.md`, `glossary.md`, `ideas.md`.
+Files read every session: `status.md`, `session-log.md` (latest entry only), `decisions.md`, `glossary.md`, `ideas.md`.
 
 Kept deliberately small:
 - `status.md` is prune-only - completed items are removed, not moved
-- `session-log.md` caps at 10 entries - oldest get archived
+- `session-log.md` caps at 10 entries - oldest get archived. Session-start reads only the most recent entry.
 - `decisions.md` stays under 100 lines - related entries get compressed
 
 ### Tier 2 - Load by Domain
 Domain hub files load when the task touches that domain. Individual files load only when the hub indicates they're needed. **Progressive disclosure applied to context.**
 
 ### Tier 3 - Archival
-Complete or superseded files. They exist on disk but Claude never loads them unless asked. Moving files to Tier 3 is a first-class operation (`/memex:archive`).
+Complete, superseded, or stale files. They exist on disk but Claude never loads them unless asked. Moving files to Tier 3 is a first-class operation (`/memex:archive`).
 
 ---
 
@@ -58,34 +68,66 @@ Memex adapts to what it finds:
 | Manifest with Tier 1/2/3 structure, no marker | Compatible mode - operates session lifecycle without requiring migration |
 | No manifest | Prompts user to run `/memex:init` |
 
-This lets Memex adopt existing workspaces without requiring structural changes.
-
 ---
 
-## Two-Track Init
+## Init: Two Paths
 
 Init adapts to workspace state:
 
-- **Track A (empty workspace):** Ask one question ("What are you working on?"), then scaffold everything in under 30 seconds. Memory files seeded with a real answer, ideas inbox, manifest, CLAUDE.md lines. Done.
-- **Track B (existing files):** Scan file content, suggest domain groupings, propose file moves with confirmation, build manifest and hubs. Four visible steps: scan, analyze, propose, build.
+- **Empty workspace:** Ask one question ("What are you working on?"), then scaffold everything in under 30 seconds. Memory files seeded with a real answer, ideas inbox, manifest, CLAUDE.md lines. Done.
+- **Existing files:** Scan file content, analyze for domain groupings, detect catch-all folders, flag stale or conflicting files, propose organization with file moves, build manifest and hubs with confirmation. Content-aware, not just structure-aware.
 
-The manifest writes last. It's the activation marker - the system is not live until everything else is in place.
+The manifest writes last. It's the activation marker.
+
+### Content-Aware Analysis
+
+Init doesn't just read folder structure. It reads file content to:
+- Distinguish reference types (glossary vs contacts vs quick refs)
+- Detect catch-all folders and recommend dissolving them
+- Flag stale files (outdated, deprecated, superseded) for Tier 3
+- Surface conflicting files and ask which is authoritative
+- Identify cross-domain relationships for lateral wikilinks
+
+---
+
+## Wikilink System
+
+Memex converts workspaces into `[[wikilinked]]` knowledge bases. Every file reference Claude writes uses `[[filename]]` format. This serves two purposes:
+
+1. **For Claude:** Wikilinks tell Claude which files are related and that they exist, without requiring it to open them.
+2. **For users:** Open the workspace in [Obsidian](https://obsidian.md/) and every wikilink becomes a clickable edge in the knowledge graph.
+
+### Wikilink Conversion
+
+Init converts existing files in two passes:
+- **Pass 1 (automated):** Exact filename matches converted without confirmation
+- **Pass 2 (proposed):** Semantic references proposed to the user for confirmation
+
+### Lateral Cross-Linking
+
+After building hubs, init scans for cross-domain references and proposes wikilinks between files in different domains. This turns isolated hub-and-spoke clusters into a connected knowledge web.
+
+### Integrity
+
+The wikilinks script checks for broken links at every session end and can be run standalone. Target is always zero broken links.
 
 ---
 
 ## Session Management
 
 ### Session Start (`/memex:session-start`)
-Reads Tier 1 files, outputs a structured briefing designed to be read in 30 seconds. Only surfaces what's actionable. Also scans for untracked content (files and folders not in any hub) and suggests organizing them. This catches new files users created between sessions or in archived sessions that never ran session-end.
+Scans the manifest summaries, reads Tier 1 files (session-log latest entry only), and outputs a structured briefing in 30 seconds. Scans for untracked content and suggests organizing it. This catches files created between sessions or in archived sessions that never ran session-end.
 
 ### Session End (`/memex:session-end`)
 Executes without asking permission between steps:
 1. Update status.md
 2. Write session-log entry
 3. Update touched hub files (including informally created domains)
-4. Log decisions
-5. Verify wikilinks
-6. Output confirmation with ideas inbox count as FYI
+4. Scan for untracked domains and loose files
+5. Log decisions
+6. Verify wikilinks
+7. Refresh manifest summaries for changed files
+8. Output confirmation with ideas inbox count
 
 **The user works, the system maintains itself.**
 
@@ -93,7 +135,7 @@ Executes without asking permission between steps:
 
 ## Skill Architecture
 
-Memex is a Claude plugin with 8 skills:
+Memex is a Claude Cowork plugin with 8 skills:
 
 | Skill | Purpose |
 |-------|---------|
@@ -106,13 +148,7 @@ Memex is a Claude plugin with 8 skills:
 | `archive` | Move file to Tier 3 |
 | `wikilinks` | Check broken links + convert plain text to wikilinks |
 
-Skills are namespaced under `memex:`. Hooks fire `session-start` and `session-end` automatically. CLAUDE.md contains only two invocation lines - all logic lives in the skills.
-
----
-
-## Wikilink Integrity
-
-Every `[[wikilink]]` must resolve to an existing file. The wikilinks script runs at every session end and can be invoked standalone with `/memex:wikilinks`. It does two things: checks for broken links (target: zero), and finds plain text file references that should be converted to `[[wikilinks]]`. Init also runs the conversion pass when adopting existing workspaces.
+Skills are namespaced under `memex:`. Hooks fire `session-start` and `session-end` automatically. CLAUDE.md contains three lines: session-start invocation, session-end invocation, and wikilink format rule. All logic lives in the skills.
 
 ---
 
@@ -120,11 +156,10 @@ Every `[[wikilink]]` must resolve to an existing file. The wikilinks script runs
 
 - **No database.** Markdown is the storage layer.
 - **No MCP server.** No running process needed.
-- **No semantic search.** Hub-and-spoke handles relevance.
+- **No semantic search.** Hub-and-spoke with manifest summaries handles relevance.
 - **No cross-workspace memory.** Each workspace is self-contained.
-- **No GUI.** The dashboard is [Obsidian](https://obsidian.md/), VS Code, or `cat status.md`.
-- **No auto-domain detection.** Let users name their domains.
-- **No automatic archival suggestions.** Let session-end surface candidates at milestones.
+- **No GUI.** The visual layer is [Obsidian](https://obsidian.md/).
+- **No automatic archival.** Session-end surfaces candidates at milestones. The user decides.
 
 ---
 
@@ -135,4 +170,4 @@ Every `[[wikilink]]` must resolve to an existing file. The wikilinks script runs
 3. **The system maintains itself.** Users don't do bookkeeping.
 4. **Markdown is the interface.** Human-readable, version-controllable, [Obsidian](https://obsidian.md/)-compatible.
 5. **Progressive disclosure.** Load the index first. Drill down only if needed.
-6. **Never assume, never delete.** Init wires what exists, creates what's missing, moves nothing.
+6. **Never assume, never delete.** Init proposes organization, moves only with confirmation, archives originals of migrated files.

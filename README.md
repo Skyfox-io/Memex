@@ -2,7 +2,7 @@
 
 **Structured memory for Claude Cowork. Pick up where you left off.**
 
-![Version](https://img.shields.io/badge/version-1.0.4-blue)
+![Version](https://img.shields.io/badge/version-1.0.5-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
 ---
@@ -21,7 +21,7 @@ Memex converts your workspace into a connected knowledge system with persistent 
 - **Tiered context loading.** Tier 1 files load every session. Tier 2 loads when you're working in that area. Tier 3 stays archived until you ask for it. Claude only reads what it needs.
 - **Session automation.** Session-start gives you a 20-second briefing. Session-end updates memory, checks integrity, and writes a clean handoff.
 - **Convention over configuration.** Drop files in standard locations and they just work. No config tables to maintain.
-- **Hub-and-spoke navigation.** `_MANIFEST.md` points to domain hubs. Hubs list their files. Claude finds things without scanning everything.
+- **Hub-and-spoke navigation.** Memex uses a hub-and-spoke system to give Claude full awareness of your workspace while only loading what the current task needs. The manifest knows everything. Claude reads the minimum. This keeps token costs low and context quality high across sessions of any size.
 - **Zero dependencies.** Markdown files. No database, no server, no runtime.
 
 ---

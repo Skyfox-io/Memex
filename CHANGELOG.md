@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.0.5] - 2026-03-22
+
+### Improved
+- README explains the hub-and-spoke architecture's purpose: full workspace awareness with minimal token cost.
+
+## [1.0.4] - 2026-03-22
+
+### Improved
+- Init proposal step now shows the user exactly what will be added to CLAUDE.md before they confirm.
+- Init completion output includes a skills table prioritizing session-active skills.
+- Session start/end noted as automatic so users know they don't need to invoke them manually.
+
 ## [1.0.3] - 2026-03-22
 
 ### Improved
