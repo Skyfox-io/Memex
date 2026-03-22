@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.1.0] - 2026-03-22
+
+### Improved
+- Session-start reads only the latest session-log entry instead of the full file. Stops at the first separator. Handles multiple sessions per day correctly.
+- Manifest entries now include one-line content summaries. Session-start scans these to decide what to load without opening every file.
+- Wikilink conversion split into two passes: exact filename matches apply automatically, semantic references are proposed to the user for confirmation.
+- Init weaves lateral cross-links between files in different domains, enriching the Obsidian graph without affecting tiered loading.
+- Session-end refreshes manifest summaries when file content changes.
+- Hub Map entries include domain summaries.
+
 ## [1.0.0] - 2026-03-21
 
 Initial public release as a Claude plugin.
