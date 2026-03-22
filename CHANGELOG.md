@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.1.2] - 2026-03-22
+
+### Improved
+- Init distinguishes reference types: term definitions go to glossary, people/contacts/roles become their own Tier 1 file, quick refs stay separate.
+- Init detects stale files (outdated, deprecated, superseded, version suffixes) and routes them to Tier 3 instead of active domains.
+- Init surfaces conflicting files (same topic, different content) in the proposal step and asks which is authoritative before placing either.
+
+## [1.1.1] - 2026-03-22
+
+### Improved
+- Init explains that `_MANIFEST.md` is the central routing file in the proposal step.
+- Init recommends Obsidian as a visual layer after completion, with setup instructions.
+- Init detects catch-all folders and recommends dissolving them instead of creating hubs.
+- Install instructions updated with Cowork UI method alongside slash command.
+
 ## [1.1.0] - 2026-03-22
 
 ### Improved
