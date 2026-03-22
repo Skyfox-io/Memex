@@ -2,7 +2,7 @@
 
 **Structured memory for Claude Cowork. Pick up where you left off.**
 
-![Version](https://img.shields.io/badge/version-1.0.3-blue)
+![Version](https://img.shields.io/badge/version-1.0.4-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
 ---
