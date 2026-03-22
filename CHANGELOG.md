@@ -1,13 +1,13 @@
 # Changelog
 
-## [1.1.2] - 2026-03-22
+## [1.0.3] - 2026-03-22
 
 ### Improved
 - Init distinguishes reference types: term definitions go to glossary, people/contacts/roles become their own Tier 1 file, quick refs stay separate.
 - Init detects stale files (outdated, deprecated, superseded, version suffixes) and routes them to Tier 3 instead of active domains.
 - Init surfaces conflicting files (same topic, different content) in the proposal step and asks which is authoritative before placing either.
 
-## [1.1.1] - 2026-03-22
+## [1.0.2] - 2026-03-22
 
 ### Improved
 - Init explains that `_MANIFEST.md` is the central routing file in the proposal step.
@@ -15,7 +15,7 @@
 - Init detects catch-all folders and recommends dissolving them instead of creating hubs.
 - Install instructions updated with Cowork UI method alongside slash command.
 
-## [1.1.0] - 2026-03-22
+## [1.0.1] - 2026-03-22
 
 ### Improved
 - Session-start reads only the latest session-log entry instead of the full file. Stops at the first separator. Handles multiple sessions per day correctly.
@@ -27,7 +27,7 @@
 
 ## [1.0.0] - 2026-03-21
 
-Initial public release as a Claude plugin.
+Initial public release as a Claude Cowork plugin.
 
 ### Core Features
 
