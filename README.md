@@ -30,14 +30,14 @@ Memex converts your workspace into a connected knowledge system with persistent 
 
 **Requires [Claude Cowork](https://claude.ai/download).** (Can also be adapted for [Claude Code](docs/claude-code-usage.md).)
 
-1. Add the Memex marketplace:
+1. Add the Memex marketplace. Either method works:
+   - **Cowork UI:** Click Customize > Browse plugins > "+" to add marketplace. Enter `Skyfox-io/Memex` and click Sync.
+   - **Slash command:** Type `/plugin marketplace add Skyfox-io/Memex` in any session.
 
-```
-/plugin marketplace add Skyfox-io/Memex
-```
+   (`Skyfox-io/Memex` is GitHub shorthand for `github.com/Skyfox-io/Memex`.)
 
 2. Install the plugin when prompted
-3. Run `/memex:init`
+3. Run `/memex:init` in your workspace
 
 **New workspace?** Init asks what you're working on, then scaffolds everything in under 30 seconds.
 
