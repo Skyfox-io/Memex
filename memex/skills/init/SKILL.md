@@ -49,7 +49,7 @@ For empty or near-empty workspaces. One question, then scaffold.
 5. Create `_MANIFEST.md` with marker, Tier 1 table pointing to created files, empty Tier 2, empty Tier 3, empty Hub Map. **Write this last** - it's the activation marker.
 6. Output: "Memex is ready. Start a new session and the briefing will run automatically.
 
-   **Visual layer:** Your workspace is now fully wikilinked. If you use [Obsidian](https://obsidian.md/), open this folder as a vault (File > Open Vault > Open folder as vault). You'll see a graph view (Cmd+G) showing how all your files connect. Every `[[wikilink]]` becomes a clickable edge in the graph. It's optional but recommended for navigating your knowledge base visually."
+   **Visual layer:** Your workspace is now fully wikilinked. If you use [Obsidian](https://obsidian.md/), open your Cowork workspace as a vault (File > Open Vault > Open folder as vault). You'll see a graph view (Cmd+G) showing how all your files connect. Every `[[wikilink]]` becomes a clickable edge in the graph. It's optional but recommended for navigating your knowledge base visually."
 
 ---
 
@@ -132,7 +132,7 @@ These files have no dependencies on each other. Create them concurrently where p
 
    "Memex is ready. Start a new session and the briefing will run automatically.
 
-   **Visual layer:** Your workspace is now fully wikilinked. If you use [Obsidian](https://obsidian.md/), open this folder as a vault (File > Open Vault > Open folder as vault). You'll see a graph view (Cmd+G) showing how all your files connect. Every `[[wikilink]]` becomes a clickable edge in the graph."
+   **Visual layer:** Your workspace is now fully wikilinked. If you use [Obsidian](https://obsidian.md/), open your Cowork workspace as a vault (File > Open Vault > Open folder as vault). You'll see a graph view (Cmd+G) showing how all your files connect. Every `[[wikilink]]` becomes a clickable edge in the graph."
 
 ---
 
