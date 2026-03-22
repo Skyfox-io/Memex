@@ -49,7 +49,21 @@ For empty or near-empty workspaces. One question, then scaffold.
 5. Create `_MANIFEST.md` with marker, Tier 1 table pointing to created files, empty Tier 2, empty Tier 3, empty Hub Map. **Write this last** - it's the activation marker.
 6. Output: "Memex is ready. Start a new session and the briefing will run automatically.
 
-   **Visual layer:** Your workspace is now fully wikilinked. If you use [Obsidian](https://obsidian.md/), open your Cowork workspace as a vault (File > Open Vault > Open folder as vault). You'll see a graph view (Cmd+G) showing how all your files connect. Every `[[wikilink]]` becomes a clickable edge in the graph. It's optional but recommended for navigating your knowledge base visually."
+   I added three lines to your workspace-root CLAUDE.md for session automation and wikilink formatting. Your existing content wasn't changed.
+
+   **Skills you can use during a session:**
+
+   | Skill | What it does |
+   |-------|-------------|
+   | `/memex:idea` | Quick-capture an idea to the inbox |
+   | `/memex:update` | Save current status mid-session without closing |
+   | `/memex:add-domain` | Add a new domain folder with hub index |
+   | `/memex:archive` | Move a file from active to archived |
+   | `/memex:wikilinks` | Check for broken links and convert plain text to wikilinks |
+
+   Session briefings and close run automatically via hooks.
+
+   **Visual layer:** Your workspace is now fully wikilinked. If you use [Obsidian](https://obsidian.md/), open your Cowork workspace as a vault (File > Open Vault > Open folder as vault). You'll see a graph view (Cmd+G) showing how all your files connect. Every `[[wikilink]]` becomes a clickable edge in the graph."
 
 ---
 
@@ -106,6 +120,11 @@ Present findings and a recommended organization:
 >
 > Everything gets wired through `_MANIFEST.md` at the root of your workspace. This is the routing file Claude reads at the start of every session to know what to load, what's in each domain, and what's archived. All the tiers, hubs, and files above route through it.
 >
+> **CLAUDE.md:** I'll append three lines to your workspace-root CLAUDE.md that tell me to run session briefings automatically, close sessions cleanly, and use `[[wikilink]]` format. Your existing content won't be changed. The lines are:
+> - `Invoke /memex:session-start before doing anything else`
+> - `Invoke /memex:session-end when the user signals done`
+> - `Use [[filename]] wikilink format when referencing files`
+>
 > I'll create hub files (`*-index.md`) for each domain and build the manifest. Want me to proceed? You can also adjust the groupings before I start."
 
 Wait for confirmation. If the user adjusts groupings, incorporate changes.
@@ -133,6 +152,20 @@ These files have no dependencies on each other. Create them concurrently where p
 11. Output summary listing every file created, moved, wired, converted, and cross-linked. End with:
 
    "Memex is ready. Start a new session and the briefing will run automatically.
+
+   I added three lines to your workspace-root CLAUDE.md for session automation and wikilink formatting. Your existing content wasn't changed.
+
+   **Skills you can use during a session:**
+
+   | Skill | What it does |
+   |-------|-------------|
+   | `/memex:idea` | Quick-capture an idea to the inbox |
+   | `/memex:update` | Save current status mid-session without closing |
+   | `/memex:add-domain` | Add a new domain folder with hub index |
+   | `/memex:archive` | Move a file from active to archived |
+   | `/memex:wikilinks` | Check for broken links and convert plain text to wikilinks |
+
+   Session briefings and close run automatically via hooks.
 
    **Visual layer:** Your workspace is now fully wikilinked. If you use [Obsidian](https://obsidian.md/), open your Cowork workspace as a vault (File > Open Vault > Open folder as vault). You'll see a graph view (Cmd+G) showing how all your files connect. Every `[[wikilink]]` becomes a clickable edge in the graph."
 

@@ -1,6 +1,6 @@
 {
   "name": "memex",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Structured memory for Claude Cowork. Tiered context loading, session automation, and Obsidian-compatible navigation.",
   "author": {
     "name": "Skyfox"
