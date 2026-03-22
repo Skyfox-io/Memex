@@ -70,8 +70,10 @@ Read every markdown file to understand its content and purpose.
 Based on file content (not just folder structure), identify:
 
 - **Memory-like files** - status tracking, session logs, decision logs, glossaries
-- **Glossary-like content** - acronym tables, people lists, shorthand definitions, terminology references. These get merged into glossary.md during the build phase.
+- **Reference types** - distinguish between different kinds of reference content. Term definitions and shorthand go into glossary.md. People directories, contacts, team roles, and access rules become their own Tier 1 file (`memory/contacts.md`). Quick reference sheets stay separate. Don't merge different reference types into a single file.
 - **Ideas-like files** - existing idea captures, brainstorm docs, inbox files. Content migrates to scratch/ideas.md; originals move to Tier 3.
+- **Stale or superseded files** - detect files that signal they're no longer current. Look for: explicit markers in content or filenames (outdated, deprecated, superseded, archived, "do not use", "replaced by"), version suffixes where a newer version exists (v1 when v2 exists), and date references that predate newer versions of the same content. Route these straight to Tier 3. Do not place them in active domains.
+- **Conflicting files** - when two files cover the same topic with different content, or one file references another as contradictory or replaced, surface the conflict in the proposal step. Ask the user which is authoritative before placing either one. Do not silently organize both into the same domain.
 - **Domain clusters** - groups of files about the same topic (e.g., 3 files about marketing, 4 about product). These become domain suggestions even if the files are scattered across folders.
 - **Catch-all folders** - folders containing files that don't share a common topic (e.g., a `notes/` folder with meeting notes, ideas, decisions, and reference material mixed together). These are not domains. Flag them and recommend dissolving: migrate each file to the domain it actually belongs in, or to the appropriate memory file. Do not create a hub for a catch-all.
 - **Loose files** - files that don't clearly belong to a cluster yet
