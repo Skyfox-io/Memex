@@ -71,6 +71,7 @@ Based on file content (not just folder structure), identify:
 - **Glossary-like content** - acronym tables, people lists, shorthand definitions, terminology references. These get merged into glossary.md during the build phase.
 - **Ideas-like files** - existing idea captures, brainstorm docs, inbox files. Content migrates to scratch/ideas.md; originals move to Tier 3.
 - **Domain clusters** - groups of files about the same topic (e.g., 3 files about marketing, 4 about product). These become domain suggestions even if the files are scattered across folders.
+- **Catch-all folders** - folders containing files that don't share a common topic (e.g., a `notes/` folder with meeting notes, ideas, decisions, and reference material mixed together). These are not domains. Flag them and recommend dissolving: migrate each file to the domain it actually belongs in, or to the appropriate memory file. Do not create a hub for a catch-all.
 - **Loose files** - files that don't clearly belong to a cluster yet
 - **Hub-like files** - any existing `*-index.md` files
 
