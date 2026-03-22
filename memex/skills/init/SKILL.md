@@ -47,7 +47,9 @@ For empty or near-empty workspaces. One question, then scaffold.
    > **ALWAYS:** When referencing any file in markdown you write or edit, use `[[filename]]` wikilink format.
    ```
 5. Create `_MANIFEST.md` with marker, Tier 1 table pointing to created files, empty Tier 2, empty Tier 3, empty Hub Map. **Write this last** - it's the activation marker.
-6. Output: "Memex is ready. Start a new session and the briefing will run automatically."
+6. Output: "Memex is ready. Start a new session and the briefing will run automatically.
+
+   **Visual layer:** Your workspace is now fully wikilinked. If you use [Obsidian](https://obsidian.md/), open this folder as a vault (File > Open Vault > Open folder as vault). You'll see a graph view (Cmd+G) showing how all your files connect. Every `[[wikilink]]` becomes a clickable edge in the graph. It's optional but recommended for navigating your knowledge base visually."
 
 ---
 
@@ -100,7 +102,9 @@ Present findings and a recommended organization:
 >
 > **Files staying where they are:** [list files that don't need to move]
 >
-> I'll create hub files (`*-index.md`) for each domain and wire everything into a manifest. Want me to proceed? You can also adjust the groupings before I start."
+> Everything gets wired through `_MANIFEST.md` at the root of your workspace. This is the routing file Claude reads at the start of every session to know what to load, what's in each domain, and what's archived. All the tiers, hubs, and files above route through it.
+>
+> I'll create hub files (`*-index.md`) for each domain and build the manifest. Want me to proceed? You can also adjust the groupings before I start."
 
 Wait for confirmation. If the user adjusts groupings, incorporate changes.
 
@@ -124,7 +128,11 @@ These files have no dependencies on each other. Create them concurrently where p
    - **`.claude/CLAUDE.md` already contains Memex session lines:** Skip creating a root-level duplicate.
 9. Create `_MANIFEST.md` mapping everything to tiers. For each file entry, include a one-line summary of the file's content (not just its purpose). For hub entries in the Hub Map, include a summary of what the domain covers. Write this last.
 10. Run wikilink verification to confirm zero broken links.
-11. Output summary listing every file created, moved, wired, converted, and cross-linked.
+11. Output summary listing every file created, moved, wired, converted, and cross-linked. End with:
+
+   "Memex is ready. Start a new session and the briefing will run automatically.
+
+   **Visual layer:** Your workspace is now fully wikilinked. If you use [Obsidian](https://obsidian.md/), open this folder as a vault (File > Open Vault > Open folder as vault). You'll see a graph view (Cmd+G) showing how all your files connect. Every `[[wikilink]]` becomes a clickable edge in the graph."
 
 ---
 
