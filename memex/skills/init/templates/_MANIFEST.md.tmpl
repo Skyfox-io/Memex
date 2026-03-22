@@ -1,0 +1,33 @@
+# Context Routing
+<!-- memex-managed:1.0.0 -->
+<!-- This file is managed by Memex. You shouldn't need to edit it directly.
+     Use /memex:add-domain to add domains and /memex:archive to archive files. -->
+
+> Load Tier 1 at session start. Load Tier 2 hubs by domain. Never auto-load Tier 3.
+> Wikilinks are pointers, not load triggers. Only open files the current task requires.
+
+## Tier 1 - Always Load
+
+| File | Summary | Volatility |
+|------|---------|------------|
+| [[CLAUDE]] | Identity, voice, project context | STABLE |
+| [[status]] | {{status-summary}} | VOLATILE |
+| [[session-log]] | {{session-log-summary}} | VOLATILE |
+| [[decisions]] | {{decisions-summary}} | STABLE |
+| [[glossary]] | {{glossary-summary}} | STABLE |
+| [[ideas]] | {{ideas-summary}} | VOLATILE |
+
+## Tier 2 - By Domain
+
+{{tier-2-domain-sections}}
+
+## Tier 3 - Archive
+
+| File | Reason | Date |
+|------|--------|------|
+
+## Hub Map
+
+| Domain | Hub | Summary |
+|--------|-----|---------|
+{{hub-map-rows}}

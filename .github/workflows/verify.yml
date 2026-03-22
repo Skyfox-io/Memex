@@ -1,0 +1,34 @@
+name: Verify
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  wikilinks:
+    name: Wikilink integrity
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify nonprofit example
+        run: python3 memex/scripts/verify-wikilinks.py examples/nonprofit
+
+      - name: Verify startup example
+        run: python3 memex/scripts/verify-wikilinks.py examples/startup
+
+  placeholders:
+    name: No placeholder text in examples
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check for placeholders
+        run: |
+          if grep -r '\[placeholder\]\|\[bracket\]\|{{.*}}' --include="*.md" examples/; then
+            echo "ERROR: Placeholder text found in examples/"
+            exit 1
+          fi
+          echo "CLEAN - no placeholder text"

@@ -1,0 +1,20 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "memex",
+  "owner": {
+    "name": "Skyfox"
+  },
+  "metadata": {
+    "description": "Structured memory plugin for Claude Cowork with tiered context loading and session automation."
+  },
+  "plugins": [
+    {
+      "name": "memex",
+      "source": "./memex",
+      "version": "1.0.0",
+      "description": "Structured memory for Claude Cowork. Tiered context loading, session automation, and Obsidian-compatible navigation.",
+      "category": "productivity",
+      "homepage": "https://github.com/Skyfox-io/Memex"
+    }
+  ]
+}

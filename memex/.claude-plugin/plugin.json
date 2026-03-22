@@ -1,0 +1,12 @@
+{
+  "name": "memex",
+  "version": "1.0.0",
+  "description": "Structured memory for Claude Cowork. Tiered context loading, session automation, and Obsidian-compatible navigation.",
+  "author": {
+    "name": "Skyfox"
+  },
+  "homepage": "https://github.com/Skyfox-io/Memex",
+  "repository": "https://github.com/Skyfox-io/Memex",
+  "license": "MIT",
+  "keywords": ["memory", "productivity", "obsidian", "session-management", "knowledge-work"]
+}

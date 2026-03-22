@@ -1,0 +1,2 @@
+# Fix GitHub language detection - .tmpl files are Markdown templates, not Go
+*.tmpl linguist-language=Markdown
