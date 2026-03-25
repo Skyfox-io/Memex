@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.0.6] - 2026-03-25
+
+### Improved
+- Session-start offers "Start session" or "Update first" prompt after briefing, so users can flag work done between sessions without extra friction.
+- Session-end checks status sections in touched domain files (Step 5) and updates them if the session's work made them stale.
+
 ## [1.0.5] - 2026-03-22
 
 ### Improved
