@@ -85,6 +85,8 @@ For each relevant hub: add new files with `[[filename]]` wikilinks, a one-line s
 
 Also update the one-line summaries in `_MANIFEST.md` if the content of any Tier 1 or Tier 2 file changed meaningfully this session. The manifest summaries should reflect current content so future session-starts can scan without opening files.
 
+**Check status sections in touched domain files:** Scan any domain files that were read or edited this session for status-like sections (`## Status`, `## Current State`, `## Progress`, or similar headings). If any contain information that this session's work made stale — e.g., a status still marked "planned" when work was completed, or counts/dates that no longer reflect reality — update them to match current state. Only check files that were actually touched; do not scan the full workspace.
+
 ---
 
 ## Step 6: Scan for untracked content

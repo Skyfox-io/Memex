@@ -84,7 +84,14 @@ Untracked content detected:
   [file.md] (looks like it belongs in [domain]/) - move it? say "organize files"
 ```
 
-After the briefing (and any notices), add one line: "What are we working on today?" Then stop.
+After the briefing (and any notices), end with two options:
+
+```
+→ **Start session** - jump straight in
+→ **Update first** - flag what's changed since last session
+```
+
+If the user picks "update first" (or says anything indicating items have changed), ask what's different, then update `status.md` immediately before proceeding. If they pick "start session" (or just state their task), move on — don't ask again.
 
 ## Notes
 
