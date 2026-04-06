@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.1.1] - 2026-04-06
+
+### Fixed
+- Clean release tag for marketplace update detection (v1.1.0 tag was force-pushed, which can prevent marketplace git pull from updating cleanly).
+
 ## [1.1.0] - 2026-04-05
 
 ### Added
