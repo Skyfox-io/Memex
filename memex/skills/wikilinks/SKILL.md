@@ -1,7 +1,8 @@
 ---
 name: wikilinks
 description: >
-  Check wikilink integrity and convert plain text file references to [[wikilinks]].
+  Check wikilink integrity and convert plain text to [[wikilinks]]. Run after reorganizing files,
+  renaming documents, adding content in bulk, or when the Obsidian graph shows disconnected nodes.
 ---
 
 # Memex - Wikilinks
@@ -86,3 +87,11 @@ Files scanned: [count]
 
 Obsidian graph: [count] nodes, [count] edges
 ```
+
+---
+
+## Gotchas
+
+- The `--suggest` mode matches filenames as whole words. Short filenames (3 characters) can produce false positives, e.g., `api.md` matches every mention of "API" in prose. Review suggestions before applying all.
+- Code blocks and URLs are stripped before scanning, but inline code (single backticks) containing filenames may still produce false suggestions.
+- The script skips `.claude/`, `.obsidian/`, `.git/` by default. If your workspace has other non-content directories, add them to the `--skip` flags.

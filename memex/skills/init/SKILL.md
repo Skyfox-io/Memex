@@ -173,37 +173,13 @@ These files have no dependencies on each other. Create them concurrently where p
 
 ## Health Check (existing Memex workspace)
 
-When `_MANIFEST.md` exists with current version marker:
-
-1. Validate Tier 1 files exist on disk
-2. Validate all Hub Map entries point to real files
-3. Scan for untracked files and folders (content-aware - read files, suggest domains)
-4. Run wikilink verification
-5. Report results:
-
-```
-Memex Health Check
-
-Tier 1 files: [count OK] / [count expected]
-Hub files: [count OK] / [count expected]
-Wikilinks: [CLEAN or count broken]
-Untracked: [count files not in any hub or tier]
-
-Overall: [HEALTHY or count issues found]
-```
-
-Offer to repair any issues found. For untracked files, suggest which domain they belong in.
+When `_MANIFEST.md` exists with current version marker, read `references/health-check.md` and execute the health check flow.
 
 ---
 
 ## Migrations (old version marker)
 
-When version is behind:
-1. List what changed between versions
-2. Apply structural changes (e.g., add missing manifest sections)
-3. Update the version in the marker
-4. Run health check
-5. Report what was migrated
+When version is behind, read `references/migrations.md` and execute the migration flow.
 
 ---
 
@@ -214,6 +190,14 @@ When creating or updating any file:
 - Every file reference in `_MANIFEST.md` must use `[[filename]]` wikilink format
 - When moving a file, search all `.md` files for `[[old-name]]` and update to `[[new-name]]`
 - After all writes, run wikilink verification to confirm zero broken links
+
+---
+
+## Gotchas
+
+- If the workspace-root `CLAUDE.md` already has session hooks from another plugin (not Memex), ask the user which plugin should own the session lifecycle. Don't silently overwrite.
+- Catch-all folders (like `notes/` with mixed content) should be dissolved, not turned into domains. Check file content similarity before suggesting a domain.
+- Wikilink conversion can false-positive on short filenames (3-letter stems like `api.md` matching every mention of "API"). The two-pass system mitigates this: Pass 2 gives the user a chance to reject bad matches.
 
 ---
 

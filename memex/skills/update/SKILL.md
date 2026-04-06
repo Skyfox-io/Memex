@@ -1,7 +1,8 @@
 ---
 name: update
 description: >
-  Mid-session sync - flush current status and decisions to memory without closing the session.
+  Mid-session sync -- flush current status and decisions to memory without closing the session.
+  Use when you want to checkpoint progress, after a significant decision, or before stepping away.
 ---
 
 # Memex - Update
@@ -43,13 +44,35 @@ Skip if no decisions were made.
 
 ---
 
-## Step 4: Confirm
+## Step 4: Annotate superseded decisions
+
+Scan decisions.md for entries where a later entry explicitly overrides an earlier one. Look for language in newer entries that references older decisions: "supersedes", "replaces", "dropped", "no longer", "instead of", "reverses".
+
+For each match:
+1. Find the older entry being referenced
+2. If it's not already struck through, wrap it in ~~strikethrough~~
+3. Append ` (superseded YYYY-MM-DD)` with the date of the newer entry
+
+Only annotate when the override relationship is explicit in the text. Do not infer contradictions from similar topics -- that's what /memex:lint is for.
+
+Skip this step if decisions.md has fewer than 5 entries.
+
+---
+
+## Step 5: Confirm
 
 ```
 Memory updated.
 
 status.md - updated [date]
-Decisions: [count logged, or "none"]
+Decisions: [count logged, or "none"] ([N] superseded entries annotated)
 
 Session still open. Run /memex:session-end to close fully.
 ```
+
+---
+
+## Gotchas
+
+- decisions.md should stay under 100 lines. If it's approaching that after logging, compress related entries from the same time period into summary entries.
+- Only annotate decisions where the supersession is explicit in the text. Don't infer contradictions from topical similarity.

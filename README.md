@@ -2,7 +2,7 @@
 
 **Structured memory for Claude Cowork. Pick up where you left off.**
 
-![Version](https://img.shields.io/badge/version-1.0.5-blue)
+![Version](https://img.shields.io/badge/version-1.1.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
 ---
@@ -118,6 +118,7 @@ your-workspace/
 | `/memex:add-domain` | Add a new domain folder with hub index |
 | `/memex:archive` | Move a file from active to archived in the manifest |
 | `/memex:wikilinks` | Check for broken links and convert plain text references to `[[wikilinks]]` |
+| `/memex:lint` | Audit workspace health: stale status, contradictions, orphans |
 
 ---
 

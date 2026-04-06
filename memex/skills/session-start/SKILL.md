@@ -1,7 +1,8 @@
 ---
 name: session-start
 description: >
-  Session briefing - auto-invoke at every session open. Reads status, log, decisions, ideas, delivers briefing.
+  Auto-runs at session open. Also invoke manually to re-orient after /clear,
+  when context feels stale mid-session, or when resuming work after a break.
 ---
 
 # Memex - Session Start
@@ -41,6 +42,8 @@ Read these files in order:
 
 If any file is missing, note it briefly and continue. Do not stop.
 
+After reading status.md, parse the "Last updated" date. Calculate the number of days between that date and today. If more than 3 days, flag this for the briefing output.
+
 ## Step 4: Pre-load relevant domain
 
 If the user's opening message mentions a specific domain or topic, read that domain's hub file now. Use the manifest summaries to identify the right hub without opening all of them.
@@ -61,6 +64,10 @@ No preamble. No pleasantries. Exact format:
 ---
 
 **Status:** [one sentence from status.md Active Focus]
+
+If status.md is more than 3 days stale, insert the next line. Otherwise skip it.
+
+**Stale:** Status is [N] days old (last updated [date]). Consider "Update first" below, or run `/memex:lint` for a full health check.
 
 **Last session:** [2-3 bullets from the most recent session-log entry]
 
@@ -99,3 +106,11 @@ If the user picks "update first" (or says anything indicating items have changed
 - Only surface what's actionable.
 - Use `[[filename]]` wikilink format when referencing files.
 - Wikilinks are pointers, not load triggers. Seeing `[[brand-voice]]` in a file doesn't mean you should load brand-voice.md. Only load files when the current task requires them.
+
+---
+
+## Gotchas
+
+- Sessions that time out or get abandoned don't run session-end, so status.md and session-log.md may not reflect the last session's work. The staleness warning catches this. If the user sees a warning, suggest "Update first" before diving in.
+- Session-start reads only the most recent session-log entry (stops at first `---`). If the file format is corrupted (missing separators), it may read too much. The session-log format must have `---` after every entry.
+- The "Update first" option (added in v1.0.6) lets users correct drift before working. If they pick it, update status.md immediately, then proceed.

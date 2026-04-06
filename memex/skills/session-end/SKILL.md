@@ -1,7 +1,8 @@
 ---
 name: session-end
 description: >
-  Close session - update memory files, log decisions, verify wikilink integrity
+  Auto-runs at session close. Also invoke manually if a session is about to time out,
+  if the hook didn't fire, or to force a clean checkpoint before a long break.
 ---
 
 # Memex - Session End
@@ -160,6 +161,26 @@ Ideas inbox: [count] items
 ```
 
 This is informational. The session is closed. Do not block on a response.
+
+---
+
+## Step 10: Write session marker
+
+If `$CLAUDE_PLUGIN_DATA` is available (the environment variable is set and the directory exists), append a line to `$CLAUDE_PLUGIN_DATA/session-closes.log`:
+
+```
+YYYY-MM-DDTHH:MM:SS  workspace-root-basename  clean
+```
+
+This lets /memex:lint verify that sessions are closing properly. If the variable isn't set or the directory doesn't exist, skip silently. This step is best-effort and never blocks session close.
+
+---
+
+## Gotchas
+
+- This skill is the most common victim of session timeouts. If the session dies mid-execution, partial updates may have been written. Session-start's staleness warning catches this case.
+- Hub files created informally (a user manually creates `research/research-index.md` instead of using /memex:add-domain) are detected in Step 5 by scanning for `*-index.md` files in touched folders. But hubs in untouched folders won't be found until a future session touches that domain.
+- When decisions.md approaches 100 lines in Step 7, compress related entries. Don't just truncate. Merge entries from the same time period that cover the same topic into summary entries.
 
 ---
 

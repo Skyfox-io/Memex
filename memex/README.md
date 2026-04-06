@@ -30,6 +30,7 @@ Empty workspace? Init scaffolds everything in under 30 seconds, zero questions. 
 | `/memex:add-domain` | Add a new domain folder with hub index |
 | `/memex:archive` | Move a file from active to archived in the manifest |
 | `/memex:wikilinks` | Check for broken links and convert plain text references to `[[wikilinks]]` |
+| `/memex:lint` | Audit workspace health: stale status, contradictions, orphans |
 
 ## How it works
 

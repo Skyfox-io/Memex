@@ -49,9 +49,11 @@ To modify an existing skill or add a new one:
 1. Skills live in `memex/skills/[skill-name]/SKILL.md`
 2. SKILL.md needs YAML frontmatter (`name`, `description`)
 3. Description should be short - a trigger condition, not a summary
-4. Use convention > config > search for path resolution
-5. Update the Skills table in `README.md` and `memex/README.md`
-6. Update `CHANGELOG.md`
+4. If the skill has known failure modes, add a `## Gotchas` section at the bottom
+5. If the skill has multiple independent paths, consider using `references/` sub-files for progressive disclosure
+6. Use convention > config > search for path resolution
+7. Update the Skills table in `README.md` and `memex/README.md`
+8. Update `CHANGELOG.md`
 
 ### Skill Guidelines
 
@@ -60,6 +62,7 @@ To modify an existing skill or add a new one:
 - **Fail loudly.** If something is wrong, tell the user. Never silently pass.
 - **Use `[[wikilinks]]`** when referencing files in output.
 - **Don't duplicate logic in CLAUDE.md.** Session logic lives in skills, not in CLAUDE.md.
+- **Document gotchas.** If a skill has known edge cases or failure modes, add a Gotchas section.
 
 ---
 

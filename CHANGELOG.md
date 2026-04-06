@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.1.0] - 2026-04-05
+
+### Added
+- New `/memex:lint` skill for workspace health audits: stale status, contradicted decisions, orphan files, broken hub references, stale blockers. Read-only by default, offers fixes with `--fix` flag.
+- Gotchas sections in session-start, session-end, init, update, and wikilinks documenting known failure modes and edge cases.
+- `$CLAUDE_PLUGIN_DATA` integration in session-end for tracking clean session closes.
+- Progressive disclosure in init (health-check and migrations extracted to reference files) and lint (check definitions in reference file).
+
+### Improved
+- `/memex:update` auto-annotates superseded decisions with strikethrough and date pointers, keeping decisions.md self-consistent.
+- Session-start warns when status.md is more than 3 days stale, catching drift from abandoned sessions.
+- Skill descriptions rewritten as trigger conditions (when to use) across session-start, session-end, update, archive, and wikilinks.
+
+### Fixed
+- `.claude-plugin/marketplace.json` version now matches plugin.json (was stuck at 1.0.5).
+
 ## [1.0.6] - 2026-03-25
 
 ### Improved

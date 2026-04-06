@@ -1,7 +1,8 @@
 ---
 name: archive
 description: >
-  Archive a file from Tier 2 to Tier 3 in the manifest.
+  Move a file from active (Tier 2) to archived (Tier 3) when it's no longer needed for current
+  work. Use when a project wraps up, a reference goes stale, or a file is superseded.
 argument-hint: "[filename]"
 disable-model-invocation: true
 ---

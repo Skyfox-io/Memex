@@ -135,7 +135,7 @@ Executes without asking permission between steps:
 
 ## Skill Architecture
 
-Memex is a Claude Cowork plugin with 8 skills:
+Memex is a Claude Cowork plugin with 9 skills:
 
 | Skill | Purpose |
 |-------|---------|
@@ -147,8 +147,39 @@ Memex is a Claude Cowork plugin with 8 skills:
 | `add-domain` | Add domain folder with hub and file organization |
 | `archive` | Move file to Tier 3 |
 | `wikilinks` | Check broken links + convert plain text to wikilinks |
+| `lint` | Audit workspace health and detect drift |
 
 Skills are namespaced under `memex:`. Hooks fire `session-start` and `session-end` automatically. CLAUDE.md contains three lines: session-start invocation, session-end invocation, and wikilink format rule. All logic lives in the skills.
+
+---
+
+## Progressive Disclosure in Skills
+
+Skills that handle multiple independent paths use `references/` sub-files to keep the main SKILL.md focused. Claude reads the main file first, then loads references only when the current path requires them.
+
+Currently used by:
+- `init` -- health-check and migration flows in `references/`
+- `lint` -- check definitions in `references/`
+
+Linear skills (session-start, session-end) that run all steps every time don't benefit from splitting and remain single files.
+
+---
+
+## Plugin Data
+
+`$CLAUDE_PLUGIN_DATA` is a stable per-plugin directory that survives skill upgrades. Memex uses it for operational data that isn't workspace content:
+
+- `session-closes.log` -- appended by session-end to track clean closes
+
+This data is best-effort. Skills that write to it skip silently if the variable isn't set. Skills that read from it treat missing data as absent, not as an error.
+
+---
+
+## Gotchas in Skills
+
+Skills with known failure modes include a `## Gotchas` section at the bottom of SKILL.md. These document edge cases, false-positive risks, and session-lifecycle issues that users and contributors should know about.
+
+Gotchas are the highest-signal content for improving skill reliability over time. When a new failure mode is discovered, add it to the relevant skill's gotchas section.
 
 ---
 
