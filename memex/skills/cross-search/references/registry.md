@@ -22,8 +22,7 @@ Invoke with `python3 <path> <subcommand> ...`.
 ## Searchable / privacy semantics
 
 - New sources default to `searchable: true`.
-- `searchable: false` is total opt-out: cross-search skips both the grep
-  pass (manifest + closets) and the `.facts.db` query for that source.
+- `searchable: false` is total opt-out: cross-search skips that source.
 - Toggle via `python3 sources.py set-searchable <name> true|false` or by
   editing `~/.memex/sources.md` directly.
 
@@ -33,7 +32,6 @@ Per searchable source:
 
 - `_MANIFEST.md` (top level)
 - every `_CLOSETS.md` and `_CLOSETS-archive.md` under the workspace
-- `memory/.facts.db` (read-only) unless `--no-facts`
 
 It does not read individual content files. Closets are the index; content
 is the body. Closets format spec: `memex/skills/session-end/references/closets-format.md`.

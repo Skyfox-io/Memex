@@ -2,11 +2,10 @@
 
 **Structured memory for Claude Cowork. Pick up where you left off.**
 
-![Version](https://img.shields.io/badge/version-2.1.0-blue)
+![Version](https://img.shields.io/badge/version-2.1.1-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
-![Recall](https://img.shields.io/badge/LongMemEval--S%20R%405-90.1%25-brightgreen)
 
-> **90.1% Recall@5 on LongMemEval-S** (Wu et al., ICLR 2025). Memex gives Claude Cowork persistent memory across sessions in pure markdown, with no external dependencies.
+> Persistent memory across Cowork sessions in pure markdown. The closets-format index matches full-content keyword search on retrieval recall at roughly 1/10th the size, with zero external dependencies. No database, no API keys, no embeddings backend.
 
 ---
 
@@ -18,29 +17,26 @@ Cowork Projects gives you persistent files, but files without a system is just a
 
 ## The Solution
 
-Memex converts your workspace into a connected knowledge system with persistent memory, tiered context loading, full `[[wikilink]]` navigation, a temporal facts model, and cross-workspace federation. All in pure markdown with zero runtime dependencies.
+Memex converts your workspace into a connected knowledge system with persistent memory, tiered context loading, full `[[wikilink]]` navigation, and cross-workspace federation. All in pure markdown with zero runtime dependencies.
 
 - **Wikilinked knowledge base.** Every file reference becomes a `[[wikilink]]`. Your workspace builds into a connected graph over time. Open it in [Obsidian](https://obsidian.md/) to see how everything relates visually.
-- **Two-tier index.** A `_MANIFEST.md` plus per-hub `_CLOSETS.md` files mean Claude knows what every file contains *without opening any of them*. Massive recall improvements on questions about specific subjects, not just topics.
-- **Temporal facts.** A SQLite sidecar (Python stdlib only) tracks subject-predicate-object facts with `valid_from` / `valid_to` dates, so when something changes (Mike got promoted, the office moved, the spring campaign was cancelled), the old fact gets stamped, not overwritten. Contradiction detection catches drift automatically.
-- **Typed-edge graph.** Optional YAML frontmatter (`supersedes`, `blocks`, `people`, `projects`) builds a typed knowledge graph at session-end. Zero LLM calls; pure regex.
+- **Two-tier index.** A `_MANIFEST.md` plus per-hub `_CLOSETS.md` files (and `memory/_CLOSETS.md` for Tier 1) mean Claude knows what every file contains *without opening any of them*. Field-level retrieval (subjects, people, claims, decisions, dates, status) on questions about specific subjects, not just topics.
+- **Typed-edge graph.** Optional YAML frontmatter (`supersedes`, `blocks`, `people`, `projects`) builds a typed knowledge graph. Zero LLM calls; pure regex.
 - **Cross-workspace federation.** Register multiple workspaces (nonprofit, personal, work) in a global registry and search across all of them with `/memex:cross-search`. Privacy-first: opt-in per source.
-- **Standalone consolidation cycle.** `/memex:consolidate` runs dedup, contradiction sweep, and orphan check independently from session-end, so a session timeout doesn't compound drift.
+- **Cross-hub search within a workspace.** `/memex:search` greps the manifest plus every closets file, grouped by folder.
+- **Standalone consolidation cycle.** `/memex:consolidate` runs dedup, decisions contradictions, orphan check, and decisions compression independently from session-end, so a session timeout doesn't compound drift.
 - **Convention over configuration.** Drop files in standard locations and they just work. No config tables to maintain.
 - **Zero dependencies.** Markdown files plus stdlib Python. No database server, no API keys, no embeddings backend, no cloud.
 
-### Validated retrieval quality
+### Retrieval benchmark
 
-Memex is benchmarked on [LongMemEval-S](https://github.com/xiaowu0162/LongMemEval) (Wu et al., ICLR 2025), the standard benchmark for long-term memory in chat assistants. R@5 is the share of questions where the top-5 retrieved sessions include a ground-truth answer session.
+Reproducible on [LongMemEval-S](https://github.com/xiaowu0162/LongMemEval) (Wu et al., ICLR 2025). The closets-format index hits **90.1% Recall@5** with the `closets:emax` strategy, within 0.5pp of `content:bm25` (the upper bound that indexes the entire raw session text) at roughly 1/10th the size. 500 questions, free, deterministic, runs in 3-5 minutes:
 
-| Metric | Memex (`closets:emax`) |
-|---|---|
-| **Recall@5** | **90.1%** |
-| Recall@10 | 94.6% |
-| Hit@5 | 96.4% |
-| MRR | 0.880 |
+```
+python benchmarks/longmemeval/run_bench.py --strategies closets:emax
+```
 
-500 questions, within 0.5pp of `content:bm25` (the upper bound that indexes the entire raw session text), at roughly 1/10th the size, because closets are typed and structured, not raw transcripts. Reproduce in 3-5 minutes with `python benchmarks/longmemeval/run_bench.py --strategies closets:emax`. Full harness and per-category breakdown in [`benchmarks/longmemeval/`](benchmarks/longmemeval/).
+See [`benchmarks/longmemeval/`](benchmarks/longmemeval/) for the harness, ablations, per-category breakdown, and the full retrieval-vs-QA-accuracy context.
 
 ---
 
@@ -73,54 +69,89 @@ If you use [Obsidian](https://obsidian.md/), open the same workspace folder as a
 
 ## How It Works
 
-### The Session Lifecycle
+### Closets, the typed-field index
+
+Each domain has a `_CLOSETS.md` file (and `memory/_CLOSETS.md` covers Tier 1) that enumerates every file's distinct subjects, named entities, claims, decisions, and dates. Sessions scan closets to pick which 0-2 files a question actually needs, without opening any of them.
+
+Sample closets entry:
+
+```
+## [[campaign-plan]]
+- subjects: spring fundraising, gala, donor outreach
+- people: [[Mike]], [[Jasmine]]
+- claims: "raised $42K so far"
+- decisions: switched from HubSpot to Anchor on 2026-03-18
+- dates: 2026-04-15 (gala)
+- status: active
+```
+
+A "what about Mike?" question hits the `people:` line. "When did we leave HubSpot?" hits `decisions:`. The model never opens `campaign-plan.md` until the task actually needs the file's full content. That's the moat behind the retrieval benchmark.
+
+Each `_CLOSETS.md` is capped at 30 entries (most-recently-modified files); overflow spills to a sibling `_CLOSETS-archive.md` that loads only on a primary-closets miss. `memory/_CLOSETS.md` does not paginate (Tier 1 is a small fixed set).
+
+### The session lifecycle
 
 ```
 SESSION START
   /memex:session-start runs automatically
-  Reads status, log, decisions, ideas
-  Gives you a 20-second briefing
-  "What are we working on today?"
+  Reads status, session-log, decisions, ideas, memory/_CLOSETS.md
+  Pre-loads the relevant domain's _CLOSETS.md
+  Gives you a 30-second briefing
+  Asks: "What are we working on today?"
 
 DURING SESSION
-  Work normally. Claude reads hub files as needed.
+  Work normally. Claude consults closets to decide which files to open.
   Capture ideas with /memex:idea.
   Save progress mid-session with /memex:update.
+  Cross-hub queries: /memex:search.
 
 SESSION END
   /memex:session-end runs automatically
-  Updates status.md, writes session-log entry
-  Updates touched hub files, logs decisions
-  Checks wikilink integrity
+  Updates status.md (idempotent: skips no-op writes)
+  Appends session-log entry
+  Refreshes _CLOSETS.md for touched hubs and memory/_CLOSETS.md
+  Logs decisions
+  Verifies wikilinks; suggests conversions for files modified this session
   Prints confirmation
 ```
 
-### File Structure
+Workspace-wide maintenance (typed-edge graph rebuild, dedup, contradiction sweep, decisions compression) is decoupled from session-end and lives in `/memex:reindex` and `/memex:consolidate`.
+
+### File structure
 
 After setup, your workspace looks like this:
 
 ```
 your-workspace/
-├── CLAUDE.md              # Project identity + Memex invocation lines
-├── _MANIFEST.md           # Context routing map (Tier 1 / 2 / 3)
+├── CLAUDE.md                # Project identity + Memex invocation lines
+├── _MANIFEST.md             # Context routing map (Tier 1 / 2 / 3)
 ├── memory/
-│   ├── status.md          # What's happening right now (VOLATILE)
-│   ├── session-log.md     # Rolling handoff log (VOLATILE)
-│   ├── decisions.md       # Key decisions logged as claims (STABLE)
-│   └── glossary.md        # Project-specific terms (STABLE)
-├── [domain folders]/
-│   └── [domain]-index.md  # Hub file for each domain (Tier 2)
+│   ├── status.md            # What's happening right now (VOLATILE)
+│   ├── session-log.md       # Rolling handoff log (VOLATILE)
+│   ├── decisions.md         # Dated decisions, append-only (STABLE)
+│   ├── glossary.md          # Project-specific terms (STABLE)
+│   ├── _CLOSETS.md          # Typed-field index over Tier 1 files
+│   └── .graph.md            # Typed-edge graph (regenerable, opt-in)
+├── [domain]/
+│   ├── _CLOSETS.md          # Typed-field index for the domain (Tier 2)
+│   ├── _CLOSETS-archive.md  # Overflow above 30 entries (loads on miss)
+│   ├── [domain]-index.md    # Optional prose hub (working agreements, etc.)
+│   └── ...                  # Actual content files
 └── scratch/
-    └── ideas.md           # Raw idea inbox (VOLATILE)
+    └── ideas.md             # Raw idea inbox (VOLATILE)
 ```
 
-### Tiered Context Loading
+The `[domain]-index.md` prose hub is optional in v2.1+. Closets-only domains are the default. Add a prose index when you have working-agreement or philosophy text that doesn't fit typed rows.
+
+### Tiered context loading
 
 | Tier | When loaded | Files |
 |------|------------|-------|
-| **Tier 1** | Every session | `status.md`, `session-log.md`, `decisions.md`, `glossary.md`, `ideas.md` |
-| **Tier 2** | When working in that area | Domain hub files, then individual files as needed |
-| **Tier 3** | Only if you ask | Completed or superseded docs |
+| **Tier 1** | Every session | `status.md`, `session-log.md`, `decisions.md`, `glossary.md`, `ideas.md`, `memory/_CLOSETS.md` |
+| **Tier 2** | When working in that area | Domain `_CLOSETS.md`, then individual files as needed |
+| **Tier 3** | Only if you ask | Completed or superseded docs, plus `_CLOSETS-archive.md` for paginated hubs |
+
+Closets are pointers, not load triggers. Listing 12 files in `_CLOSETS.md` does not mean Claude opens 12 files; it means Claude knows what's in each before deciding which 0-2 the current task actually requires.
 
 ---
 
@@ -129,23 +160,22 @@ your-workspace/
 | Skill | What it does |
 |-------|-------------|
 | `/memex:init` | Set up, adopt, health-check, or upgrade a workspace |
-| `/memex:upgrade` | One-command v1→v2 migration: orchestrates resummarize + reindex + lint, idempotent on re-run |
+| `/memex:upgrade` | One-command migration orchestrator (v1→v2, v2.0→v2.1, future versions); idempotent on re-run |
 | `/memex:session-start` | Briefing at session open |
-| `/memex:session-end` | Close cleanly: update memory, log decisions, refresh closets, verify links + graph |
+| `/memex:session-end` | Close cleanly: update memory, log decisions, refresh closets, verify links |
 | `/memex:update` | Mid-session flush: save status without closing |
 | `/memex:idea` | Quick-capture an idea to the inbox |
-| `/memex:add-domain` | Add a new domain folder with hub index and closets file |
+| `/memex:add-domain` | Add a new domain folder with closets (hub index optional) |
 | `/memex:archive` | Move a file from active to archived in the manifest |
 | `/memex:wikilinks` | Check for broken links and convert plain text references to `[[wikilinks]]` |
-| `/memex:lint` | Audit workspace health: stale status, contradictions, orphans, dangling typed edges, summary version |
-| `/memex:resummarize` | Refresh manifest + hub summaries to v2 retrieval-tuned format |
-| `/memex:reindex` | Backfill or rebuild every hub's `_CLOSETS.md` from underlying file content |
-| `/memex:facts` | Query, add, or reconcile temporal facts in the SQLite knowledge graph |
-| `/memex:consolidate` | Run dedup, contradiction sweep, orphan check, decisions compression (independent of session-end) |
-| `/memex:search` | Cross-hub search within the current workspace: grep manifest + every `_CLOSETS.md` + facts.db, grouped by folder |
+| `/memex:lint` | Audit workspace health: stale status, decision supersession contradictions, orphan files, orphan folders, dangling typed edges, summary version, missing closets |
+| `/memex:resummarize` | Refresh manifest + hub summaries to current retrieval-tuned format |
+| `/memex:reindex` | Backfill or rebuild every hub's `_CLOSETS.md` (and `memory/_CLOSETS.md`) |
+| `/memex:consolidate` | Run dedup, decisions contradictions, orphan check, decisions compression (independent of session-end) |
+| `/memex:search` | Cross-hub search within the current workspace: grep manifest + every `_CLOSETS.md`, grouped by folder |
 | `/memex:link-workspace` | Register the current workspace in the global source registry |
 | `/memex:unlink-workspace` | Deregister a workspace from the global source registry |
-| `/memex:cross-search` | Grep across linked workspaces' manifests + closets, plus query each source's facts.db |
+| `/memex:cross-search` | Grep across linked workspaces' manifests + closets |
 
 ---
 
@@ -153,9 +183,9 @@ your-workspace/
 
 Memex doesn't impose a strict folder structure. Here's the convention:
 
-- **Project docs go in domain folders.** One folder per area of work (e.g., `marketing/`, `product/`, `fundraising/`). Each domain folder has a hub file (`[domain]-index.md`) that lists what's inside.
-- **Run `/memex:add-domain` to create a domain.** Or just create a folder with a `-index.md` file. Memex detects new domains automatically at session start and session end.
-- **Memory files stay in `memory/`.** Status, session log, decisions, glossary. These are always small and always loaded.
+- **Project docs go in domain folders.** One folder per area of work (e.g., `marketing/`, `product/`, `fundraising/`). Each domain folder has a `_CLOSETS.md` typed-field index. An optional `[domain]-index.md` prose hub can also live there for working agreements / philosophy text.
+- **Run `/memex:add-domain` to create a domain.** Memex detects new domains automatically at session start and session end.
+- **Memory files stay in `memory/`.** Status, session log, decisions, glossary, plus `memory/_CLOSETS.md` for typed-field retrieval over them. These are always small and always loaded.
 - **Ideas go in `scratch/ideas.md`.** Capture now, route later. Session-end will remind you about unrouted ideas.
 - **Don't worry about getting it perfect.** Start with files wherever they are. Memex wires what exists. Reorganize later as patterns emerge.
 
@@ -202,7 +232,7 @@ See [docs/obsidian-setup.md](docs/obsidian-setup.md) for detailed setup instruct
 
 ## Architecture
 
-See [ARCHITECTURE.md](ARCHITECTURE.md) for design decisions and intentional non-features. The v2 feature set. Closets two-tier index, temporal facts SQLite sidecar, typed-edge graph, cross-workspace federation. Is summarized in [CHANGELOG.md](CHANGELOG.md#200---2026-05-05).
+See [ARCHITECTURE.md](ARCHITECTURE.md) for design decisions and intentional non-features. The v2.1 feature set (closets two-tier index, typed-edge graph, cross-workspace federation, within-workspace cross-hub search) is summarized in [CHANGELOG.md](CHANGELOG.md).
 
 ## Benchmarks
 

@@ -10,8 +10,7 @@ The signals `/memex:upgrade` checks when migrating a v1 workspace, what each sig
 | `<!-- summary-format-version:N -->` | absent or `1` | `2` | Run `/memex:resummarize` |
 | `<hub>/_CLOSETS.md` | absent | present, one per hub | Run `/memex:reindex` |
 | `<!-- memex-closets:N.N -->` | n/a (file didn't exist) | `1.0` (≤30 files) or `1.1` (paginated) | Implicit on reindex |
-| `memory/.facts.db` | absent | optional, populated on first `/memex:facts` use | None — facts are opt-in |
-| `memory/.graph.md` | absent | optional, populated on session-end if any frontmatter exists | None — graph is opt-in |
+| `memory/.graph.md` | absent | optional, refreshed by `/memex:reindex` and `/memex:consolidate` if any frontmatter exists | None — graph is opt-in |
 
 ## What gets rewritten vs created
 

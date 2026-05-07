@@ -6,7 +6,6 @@ scripts that don't require an LLM:
 
   - verify-wikilinks.py (broken links, closets validation)
   - extract-graph.py (typed-edge graph from frontmatter)
-  - facts.py (SQLite temporal facts CRUD + contradictions)
   - sources.py (cross-workspace registry)
 
 Run: python3 -m pytest tests/test_scripts.py -v
@@ -25,7 +24,6 @@ ROOT = Path(__file__).resolve().parent.parent
 SCRIPTS = ROOT / "memex" / "scripts"
 VERIFY = SCRIPTS / "verify-wikilinks.py"
 EXTRACT = SCRIPTS / "extract-graph.py"
-FACTS = SCRIPTS / "facts.py"
 SOURCES = SCRIPTS / "sources.py"
 
 
@@ -147,51 +145,6 @@ def test_extract_graph_no_frontmatter():
         assert "0 typed edges" in out or "0/1" in out
 
 
-# --- facts.py --------------------------------------------------------------
-
-def test_facts_crud():
-    with tempfile.TemporaryDirectory() as d:
-        run([sys.executable, str(FACTS), "--workspace", d, "init"])
-        run([sys.executable, str(FACTS), "--workspace", d,
-             "add", "Alice", "works_at", "Acme"])
-        out = run([sys.executable, str(FACTS), "--workspace", d, "query", "Alice"])
-        assert "works_at" in out
-        assert "Acme" in out
-        out = run([sys.executable, str(FACTS), "--workspace", d, "stats"])
-        assert "Total facts:      1" in out
-
-
-def test_facts_contradictions_and_supersede():
-    with tempfile.TemporaryDirectory() as d:
-        run([sys.executable, str(FACTS), "--workspace", d, "init"])
-        run([sys.executable, str(FACTS), "--workspace", d,
-             "add", "Mike", "works_at", "Old Corp"])
-        run([sys.executable, str(FACTS), "--workspace", d,
-             "add", "Mike", "works_at", "New Corp"])
-        out = run([sys.executable, str(FACTS), "--workspace", d, "contradictions"])
-        assert "CONTRADICTIONS" in out
-        assert "Mike" in out
-        # Supersede the first
-        run([sys.executable, str(FACTS), "--workspace", d,
-             "supersede", "1", "Newer Corp"])
-        out = run([sys.executable, str(FACTS), "--workspace", d, "timeline", "Mike"])
-        assert "Old Corp" in out
-        assert "Newer Corp" in out
-
-
-def test_facts_export_rebuild_roundtrip():
-    with tempfile.TemporaryDirectory() as d:
-        run([sys.executable, str(FACTS), "--workspace", d, "init"])
-        run([sys.executable, str(FACTS), "--workspace", d,
-             "add", "Bob", "is", "engineer"])
-        run([sys.executable, str(FACTS), "--workspace", d, "export"])
-        # Delete DB, rebuild from md
-        os.remove(Path(d) / "memory" / ".facts.db")
-        run([sys.executable, str(FACTS), "--workspace", d, "rebuild"])
-        out = run([sys.executable, str(FACTS), "--workspace", d, "query", "Bob"])
-        assert "engineer" in out
-
-
 # --- sources.py ------------------------------------------------------------
 
 def test_sources_lifecycle(tmp_home_for_sources):
@@ -225,42 +178,29 @@ def test_sources_lifecycle(tmp_home_for_sources):
         assert result.returncode == 0
 
 
-def test_sources_search_includes_facts(tmp_home_for_sources):
-    """cross-search should surface matching facts.db rows alongside grep hits."""
-    home = tmp_home_for_sources
+def test_sources_search_local_groups_by_folder(tmp_home_for_sources):
+    """search-local should grep manifest + closets in the workspace and group results by folder."""
     with tempfile.TemporaryDirectory() as ws:
-        (Path(ws) / "_MANIFEST.md").write_text("# m\n")
-        # Seed a fact in this workspace
-        subprocess.run(
-            [sys.executable, str(FACTS), "--workspace", ws, "init"],
+        ws_path = Path(ws)
+        (ws_path / "_MANIFEST.md").write_text("# m\n")
+        (ws_path / "programs").mkdir()
+        (ws_path / "programs" / "_CLOSETS.md").write_text(
+            "# Closets: programs\n<!-- memex-closets:1.1 -->\n"
+            "## [[after-school]]\n- people: [[Mike]]\n"
+        )
+        (ws_path / "memory").mkdir()
+        (ws_path / "memory" / "_CLOSETS.md").write_text(
+            "# Closets: memory\n<!-- memex-closets:1.1 -->\n"
+            "## [[status]]\n- subjects: Mike's leave\n"
+        )
+        result = subprocess.run(
+            [sys.executable, str(SOURCES), "search-local", "Mike", "--workspace", ws],
             capture_output=True, text=True,
         )
-        subprocess.run(
-            [sys.executable, str(FACTS), "--workspace", ws,
-             "add", "Mike", "works_at", "Acme"],
-            capture_output=True, text=True,
-        )
-        env = {**os.environ, "HOME": str(home)}
-        subprocess.run(
-            [sys.executable, str(SOURCES), "add", "facts-src", ws],
-            capture_output=True, text=True, env=env, check=True,
-        )
-        # Default search (facts on)
-        result = subprocess.run(
-            [sys.executable, str(SOURCES), "search", "Acme"],
-            capture_output=True, text=True, env=env,
-        )
         assert result.returncode == 0
-        assert "facts.db" in result.stdout
-        assert "Mike" in result.stdout
-        assert "Acme" in result.stdout
-        # --no-facts skips the DB
-        result = subprocess.run(
-            [sys.executable, str(SOURCES), "search", "Acme", "--no-facts"],
-            capture_output=True, text=True, env=env,
-        )
-        assert result.returncode == 0
-        assert "facts.db" not in result.stdout
+        assert "=== programs ===" in result.stdout
+        assert "=== memory ===" in result.stdout
+        assert "Total hits" in result.stdout
 
 
 # --- pytest fixtures (only used if pytest is available) -------------------
@@ -288,9 +228,6 @@ def main_standalone():
         ("extract_graph_basic", test_extract_graph_basic),
         ("extract_graph_dangling", test_extract_graph_dangling),
         ("extract_graph_no_frontmatter", test_extract_graph_no_frontmatter),
-        ("facts_crud", test_facts_crud),
-        ("facts_contradictions_and_supersede", test_facts_contradictions_and_supersede),
-        ("facts_export_rebuild_roundtrip", test_facts_export_rebuild_roundtrip),
     ]
     # sources tests use a fixture; run them manually
     def run_sources_test():
@@ -298,10 +235,10 @@ def main_standalone():
             test_sources_lifecycle(Path(home))
     tests.append(("sources_lifecycle", run_sources_test))
 
-    def run_sources_facts_test():
+    def run_sources_search_local_test():
         with tempfile.TemporaryDirectory() as home:
-            test_sources_search_includes_facts(Path(home))
-    tests.append(("sources_search_includes_facts", run_sources_facts_test))
+            test_sources_search_local_groups_by_folder(Path(home))
+    tests.append(("sources_search_local_groups_by_folder", run_sources_search_local_test))
 
     failures = 0
     for name, fn in tests:

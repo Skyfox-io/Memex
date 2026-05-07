@@ -217,11 +217,11 @@ Suggested next actions:
   • [if DECISION CONSISTENCY failed] Run /memex:lint --fix to annotate superseded decisions.
   • [if ORPHAN FILES has dangling registered entries (INFO)] Run /memex:lint --fix to remove dead closets/hub entries.
   • [if ORPHAN FOLDERS failed] Run /memex:add-domain <name> for each orphan folder, or move its files into an existing domain.
-  • [if TYPED-EDGE GRAPH failed] Open the source file and fix or remove the dangling frontmatter reference. Typed edges are not facts — do not run /memex:facts.
+  • [if TYPED-EDGE GRAPH failed] Open the source file and fix or remove the dangling frontmatter reference. Run /memex:reindex to regenerate memory/.graph.md once edges resolve.
   • [if STATUS FRESHNESS failed] Run /memex:update to refresh status.md.
   • [if STALE BLOCKERS failed] Edit status.md to resolve or restate the blocker.
   • [if any wikilink targets in the workspace look broken outside lint's scope] Run /memex:wikilinks to verify [[link]] integrity (lint does not check link targets).
-  • [if anything else looks like long-standing drift, including subject-predicate-object fact contradictions surfaced by /memex:consolidate] Run /memex:consolidate for a deeper sweep (dedup, contradictions, orphans).
+  • [if anything else looks like long-standing drift] Run /memex:consolidate for a deeper sweep (dedup, decisions contradictions, orphans, decisions compression).
 ```
 
 Only include lines whose triggering check failed. Omit the section entirely if everything passed.

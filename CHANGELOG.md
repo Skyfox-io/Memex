@@ -1,5 +1,39 @@
 # Changelog
 
+## [2.1.1] - 2026-05-06
+
+Two changes: drop the unpopulated facts.db sidecar, reframe the benchmark headline.
+
+### Removed
+
+- **`memory/.facts.db` and `/memex:facts`.** The temporal-facts SQLite sidecar shipped in v2.0.0 but never auto-initialized — `/memex:init` and `/memex:upgrade` never bootstrapped the DB, and nothing in the session lifecycle wrote to it. Closets already capture verbatim user-stated facts (`claims:`), decisions (`decisions:`), and dates (`dates:`) on every refresh, and `decisions.md` already records supersession with stronger guarantees (always loaded, always dated, lint-checkable). The unique value the DB layer was supposed to add — contradiction detection — is duplicated by the keyword-explicit decision-supersession check already in `/memex:lint` and `/memex:consolidate`. Result: the feature was theater. Removed:
+  - `memex/scripts/facts.py`
+  - `memex/skills/facts/`
+  - `_search_facts_db()` and the `--facts`/`--no-facts` flags from `sources.py`
+  - All facts.db / facts.md / temporal-facts references in `ARCHITECTURE.md`, `README.md`, `memex/README.md`, `CONTRIBUTING.md`, the cross-search/idea/unlink skills, and the v1→v2 upgrade playbook
+  - The contradictions-via-facts.py step in `/memex:consolidate`, replaced with a decision-text contradiction sweep that mirrors `/memex:lint --fix`
+  - The facts subtests in `tests/test_scripts.py`, replaced with a `search-local` folder-grouping test
+
+  Migration: workspaces with no `.facts.db` are unaffected (most workspaces, since the bootstrap never ran). Workspaces that manually populated facts via `/memex:facts add ...` lose the DB but keep their `memory/facts.md` markdown mirror; no automated export step ships in v2.1.1 because manual users had to write to `facts.md` themselves anyway.
+
+### Changed
+
+- **README headline reframed.** Drops the leaderboard-comparable "90.1% Recall@5 on LongMemEval-S" pull-quote in favor of the actual differentiator: "closets-format index in pure markdown matches full-content keyword search on retrieval recall at roughly 1/10th the size, with zero external dependencies." The 90.1% number stays in `benchmarks/longmemeval/README.md` with full context — what R@5 measures, what the BM25 baseline does, the size argument, and an explicit note that retrieval recall ≠ end-to-end QA accuracy. Anyone who knows the LongMemEval space recognized that the leaderboard measures end-to-end QA with a GPT-4o judge and that R@5 is one stage earlier; the new framing stops conflating the two.
+- **`benchmarks/longmemeval/README.md` adds a top-of-file disclaimer.** Explicit on what R@5 is (retrieval), what it isn't (QA accuracy), how the closets-vs-BM25 comparison actually reads ("competitive recall at much smaller index, not 'we beat keyword search'"), and that end-to-end QA accuracy with judge is the right next benchmark.
+- **`/memex:consolidate` Step 2 rewritten.** Now scans `decisions.md` for explicit override language (the same keyword set `/memex:lint` uses) and proposes annotating unannotated supersessions with `~~strikethrough~~` + `(superseded YYYY-MM-DD)`. `--fix` applies. Same keyword-explicit detection — no inferential contradictions from topical similarity.
+- **`/memex:lint` typed-edge footer no longer routes to `/memex:facts`.** Now suggests `/memex:reindex` to regenerate `memory/.graph.md`.
+- **`/memex:idea`, `/memex:unlink-workspace`, `/memex:cross-search`, `/memex:search` descriptions and gotchas** updated to drop facts.db references.
+- **`/memex:upgrade` v1→v2 playbook** drops the `memory/.facts.db` row from the state-signals table. v2.0→v2.1 playbook is unchanged.
+
+### For contributors
+
+- `tests/test_scripts.py` drops the three `facts_*` tests and replaces the `sources_search_includes_facts` test with `sources_search_local_groups_by_folder`. Total still 10 tests, all green.
+- The "Intentional Non-Features" list in `ARCHITECTURE.md` adds "no database" as a first-class non-feature, with a short note on why facts.db was removed in v2.1.1.
+
+### Roadmap
+
+End-to-end QA accuracy on LongMemEval-S (retrieve → generate → GPT-4o judge) is the right next benchmark. It would produce numbers directly comparable to the LongMemEval leaderboard at the cost of API spend. Not a v2.x deliverable.
+
 ## [2.1.0] - 2026-05-06
 
 A lighter, more discoverable v2. Session lifecycle does less. Tier 1 gets typed retrieval. Hub indexes become optional. Cross-hub search lands as its own skill. Decisions compression and graph rebuild move out of session-end and into the bulk-write skills where they belong.

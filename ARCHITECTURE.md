@@ -50,15 +50,15 @@ Format spec: [`memex/skills/session-end/references/closets-format.md`](memex/ski
 
 ---
 
-## Temporal Facts SQLite Sidecar
+## Temporal Reasoning Without a Database
 
-Some facts have a clock attached: where Alice works *now* vs *in 2024*; the spring campaign budget *before* legal flagged it. Markdown alone can't represent that without losing the timeline.
+Temporal change is captured by the existing markdown layer, not a separate sidecar:
 
-`memory/.facts.db` is a stdlib `sqlite3` database storing `(subject, predicate, object)` triples with `valid_from` (always set) and `valid_to` (`NULL` = currently valid). Supersession closes the old row and inserts a new one with the same subject+predicate. Contradiction detection surfaces any `(subject, predicate)` pair with multiple distinct currently-valid objects.
+- **`decisions.md`** is dated, append-only. Supersession uses `~~strikethrough~~` plus `(superseded YYYY-MM-DD)` annotations. `/memex:lint` flags unannotated supersessions; `/memex:consolidate` applies them.
+- **`session-log.md`** is the chronological record. Each entry is dated; the most recent entry loads at session-start.
+- **Closets `dates:` field** captures month/year/relative-date mentions so retrieval by time period works through the same field-level path as everything else.
 
-The DB is regenerable. `memory/facts.md` is the human-readable mirror, committed to git. `facts.py rebuild` wipes the DB and reloads from the mirror. If the two drift, the mirror wins.
-
-Surface: [`/memex:facts`](memex/skills/facts/SKILL.md) skill (explicit-invocation only. Autonomous DB writes from model inference would silently insert false facts). Read-side queries flow through the skill or via [`/memex:cross-search`](memex/skills/cross-search/SKILL.md) for cross-workspace lookups.
+That's it. No SQLite, no `valid_from`/`valid_to` triples, no contradiction-detection sweep over a separate fact table. Earlier v2 builds shipped a `memory/.facts.db` sidecar; it was removed in v2.1.1 because nothing automatic populated it (closets already capture verbatim user-stated facts in the `claims:` field) and contradiction detection was duplicated by the keyword-explicit decision-supersession check in `/memex:lint` and `/memex:consolidate`.
 
 ---
 
@@ -74,11 +74,11 @@ Schema: see [CONTRIBUTING.md](CONTRIBUTING.md#frontmatter-schema). Extractor: `m
 
 ## Cross-Workspace Federation
 
-Multiple Memex workspaces (nonprofit / personal / work) each have their own files; their manifests, closets, and `facts.db` files are *all* searchable from any workspace via `/memex:cross-search`.
+Multiple Memex workspaces (nonprofit / personal / work) each have their own files; their manifests and closets are *all* searchable from any workspace via `/memex:cross-search`.
 
-Mechanism: `~/.memex/sources.md` is a per-user global registry of `(name, path, registered, searchable)` rows. `/memex:link-workspace` adds the current workspace; `/memex:unlink-workspace` removes it; `/memex:cross-search` greps every registered source's manifest + closets and queries each `memory/.facts.db` read-only. Privacy: each source has a `searchable: true|false` flag for total per-source opt-out.
+Mechanism: `~/.memex/sources.md` is a per-user global registry of `(name, path, registered, searchable)` rows. `/memex:link-workspace` adds the current workspace; `/memex:unlink-workspace` removes it; `/memex:cross-search` greps every registered source's `_MANIFEST.md`, `_CLOSETS.md`, and `_CLOSETS-archive.md`. Privacy: each source has a `searchable: true|false` flag for total per-source opt-out.
 
-This federation is opt-in per source and read-only across the boundary. No syncing, no auth, no shared state, just grep + SQL across files the user has explicitly registered.
+This federation is opt-in per source and read-only across the boundary. No syncing, no auth, no shared state, just grep across files the user has explicitly registered.
 
 ---
 
@@ -191,7 +191,7 @@ Executes without asking permission between steps:
 
 ## Skill Architecture
 
-Memex is a Claude Cowork plugin with 18 skills, split by autonomous-invocation policy:
+Memex is a Claude Cowork plugin with 17 skills, split by autonomous-invocation policy:
 
 **Autonomous (model can trigger from a description match):**
 
@@ -202,7 +202,7 @@ Memex is a Claude Cowork plugin with 18 skills, split by autonomous-invocation p
 | `update` | Mid-session checkpoint flush |
 | `idea` | Quick idea capture to scratch inbox |
 | `lint` | Audit workspace structural health (read-only by default) |
-| `cross-search` | Read-only grep + facts.db query across linked workspaces |
+| `cross-search` | Read-only grep across linked workspaces' manifests + closets |
 
 **Explicit-only (`disable-model-invocation: true`. User must type the slash command):**
 
@@ -215,9 +215,8 @@ Memex is a Claude Cowork plugin with 18 skills, split by autonomous-invocation p
 | `wikilinks` | Verify and bulk-convert plain text references to `[[wikilinks]]` |
 | `resummarize` | Refresh manifest + hub summaries to current retrieval-tuned format |
 | `reindex` | Backfill or rebuild every hub's `_CLOSETS.md` (and `memory/_CLOSETS.md`) |
-| `consolidate` | Independent dedup + contradiction sweep + orphan check + decisions compression |
+| `consolidate` | Independent dedup + decisions contradictions + orphan check + decisions compression |
 | `search` | Cross-hub search within the current workspace |
-| `facts` | Query, write, supersede, or reconcile temporal facts in the SQLite sidecar |
 | `link-workspace` | Register the current workspace in the global source registry |
 | `unlink-workspace` | Deregister a workspace from the global source registry |
 
@@ -236,8 +235,7 @@ Currently used by:
 - `session-end`. `references/closets-format.md` and `references/summary-rules.md` (canonical specs cited by many other skills)
 - `consolidate`. `references/locking.md` (genuinely shared by 4 bulk-write skills)
 - `cross-search`. `references/registry.md` (shared with link-workspace and unlink-workspace)
-- `facts`. `references/cli.md` (exhaustive subcommand surface)
-- `upgrade`. `references/v1-to-v2.md` (version-specific migration playbook; future versions add their own)
+- `upgrade`. `references/v1-to-v2.md`, `references/v2-to-v2_1.md` (version-specific migration playbooks; future versions add their own)
 
 Linear skills that run every step every time (`session-start`, `update`, `idea`, `archive`, `add-domain`, `link-workspace`, `unlink-workspace`, `lint`, `wikilinks`, `reindex`, `resummarize`) stay as single SKILL.md files. The cohesion pass at v2.0.0 specifically inlined `lint/references/checks.md` and `consolidate/references/phases.md` because the references *were* the skill. That's an upside-down split, not progressive disclosure.
 
@@ -255,7 +253,6 @@ Workspace-local operational state lives under `memory/` instead:
 
 - `memory/.{consolidate,reindex,resummarize,upgrade}.lock`. Bulk-write locks, 30-minute staleness rule (see [`memex/skills/consolidate/references/locking.md`](memex/skills/consolidate/references/locking.md)). These guard genuine multi-minute write operations; there is no session-level lock (session-end is idempotent and runs unconditionally).
 - `memory/.{consolidate,reindex,resummarize,upgrade}-runs.log`. Append-only run logs; session-end reads `.consolidate-runs.log` to nag about cadence.
-- `memory/.facts.db`. SQLite temporal facts (regenerable from `memory/facts.md`).
 - `memory/.graph.md`. Typed-edge graph (regenerable from frontmatter via `extract-graph.py`). Refreshed lazily by `/memex:reindex` and `/memex:consolidate`, not at session-end.
 
 ---
@@ -270,13 +267,12 @@ Gotchas are the highest-signal content for improving skill reliability over time
 
 ## Intentional Non-Features
 
-- **No primary database.** Markdown is the source of truth. The `memory/.facts.db` SQLite sidecar exists only to make temporal queries fast. It's regenerable from the markdown mirror at `memory/facts.md`.
+- **No database.** Markdown is the source of truth, full stop. Earlier v2 builds shipped a `memory/.facts.db` SQLite sidecar; it was removed in v2.1.1 because closets already capture verbatim user-stated facts and decisions.md already captures supersession with stronger guarantees (always loaded, always dated, lint-checkable).
 - **No MCP server.** No running process needed.
 - **No learned vector index.** No FAISS, no HNSW, no embedding store at runtime. The closets typed-field index handles relevance.
 - **No automatic cross-workspace sync.** Federation is opt-in per source and read-only across the boundary. `/memex:cross-search` greps registered workspaces, never writes.
 - **No GUI.** The visual layer is [Obsidian](https://obsidian.md/).
 - **No automatic archival.** Session-end surfaces candidates at milestones. The user decides.
-- **No autonomous DB writes.** `/memex:facts` is gated behind explicit invocation; the model can't silently insert false facts on inference.
 
 ---
 

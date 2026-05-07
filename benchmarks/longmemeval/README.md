@@ -4,6 +4,18 @@ Reproducible retrieval-recall benchmark for Memex's hub-and-spoke retrieval, run
 
 The point: get a real, comparable number for *"does Memex find the right session in its top K?"*, without spending money on judge models or end-to-end QA.
 
+## Important: this is retrieval recall, not end-to-end QA accuracy
+
+Recall@5 is a retrieval metric. It answers *"did the right session appear in the top 5 retrieved candidates?"* — nothing more. It does **not** measure whether the system answered the question correctly.
+
+The published [LongMemEval leaderboard](https://github.com/xiaowu0162/LongMemEval) uses an end-to-end retrieve-then-generate pipeline scored by a GPT-4o judge. That's a different, harder evaluation that costs money to run. The numbers reported in this README are not directly comparable to leaderboard QA-accuracy numbers; they live one step earlier in the pipeline.
+
+Why we report retrieval recall: closets affect retrieval. The benchmark isolates the stage Memex actually changes. End-to-end QA accuracy depends on the answering model and prompting, which Memex doesn't own. Reporting retrieval cleanly separates the contribution.
+
+What the comparison to BM25 means: the standard `content:bm25` baseline indexes the entire raw session text and lands at ~90.6% R@5 on this dataset. The closets-format index gets within 0.5pp of that at roughly 1/10th the size. The story is **competitive recall at a much smaller index**, not "we beat keyword search." Anyone who claims either against a different evaluation class (e.g., systems indexing with ChromaDB and dense embeddings) is comparing different cost structures.
+
+End-to-end QA accuracy on LongMemEval-S is on the roadmap. It would close the gap with leaderboard numbers but adds API cost and judge-model dependency. Not a v2.x deliverable.
+
 ## Headline
 
 | Strategy | R@5 | R@10 | MRR | NDCG@10 | Hit@5 |
@@ -122,9 +134,15 @@ Outputs paired-bootstrap 95% CIs and significance markers, computed on the same 
 
 ## Limitations
 
-- **Retrieval-only.** This is R@K, not QA accuracy. Closing retrieval doesn't guarantee Claude answers correctly with the retrieved context.
+- **Retrieval-only.** R@K is not QA accuracy (see top-of-file note). Closing retrieval doesn't guarantee Claude answers correctly with the retrieved context.
+- **Not directly comparable to the LongMemEval leaderboard.** The leaderboard measures end-to-end QA accuracy with a GPT-4o judge. This harness measures retrieval recall, one stage earlier. Numbers from the two are in different units.
+- **BM25 baseline is strong.** A `content:bm25` baseline that indexes raw session text hits ~90.6% R@5 on this dataset, ~0.5pp above closets. The closets argument is **size**, not raw recall: same retrieval at ~10× smaller index. Don't read the closets number as "we beat keyword search"; read it as "structured markdown + 1/10th the bytes is within noise of full-content keyword search."
 - **Sessions vs files.** LongMemEval indexes by session; production Memex indexes by file. The mapping is 1:1 in this harness; a real Memex workspace splits content across hub files, so retrieval shape differs slightly at scale.
 - **Deterministic closets.** The `closets:emax` 90.1% number uses `prepare_closets.py`'s regex-based extraction. That's the number we report.
+
+## Roadmap
+
+End-to-end QA accuracy (retrieve → generate → GPT-4o judge) is the right next benchmark. It would produce numbers directly comparable to the LongMemEval leaderboard at the cost of API spend and judge-model dependency. Not in v2.x. Tracked in the project's open work list.
 
 ## Source
 

@@ -41,7 +41,7 @@ Before submitting, run these checks:
 python3 tests/test_scripts.py
 ```
 
-These exercise `verify-wikilinks.py`, `extract-graph.py`, `facts.py`, and `sources.py` against fixture workspaces. No API keys needed, ~5 seconds. Driven on CI by `.github/workflows/scripts.yml`.
+These exercise `verify-wikilinks.py`, `extract-graph.py`, and `sources.py` against fixture workspaces. No API keys needed, ~5 seconds. Driven on CI by `.github/workflows/scripts.yml`.
 
 **2. Wikilink integrity (examples):**
 ```bash
@@ -103,7 +103,7 @@ If you change a summary-writing rule or storage format:
 
 ## Contributing Scripts
 
-The `memex/scripts/` directory holds the deterministic helpers (`verify-wikilinks.py`, `extract-graph.py`, `facts.py`, `sources.py`). Rules:
+The `memex/scripts/` directory holds the deterministic helpers (`verify-wikilinks.py`, `extract-graph.py`, `sources.py`). Rules:
 
 1. **Python stdlib only.** No `pip install`. No new runtime deps.
 2. Add a `#!/usr/bin/env python3` shebang and `chmod +x`.

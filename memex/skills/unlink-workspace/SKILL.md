@@ -38,7 +38,7 @@ Workspace files untouched. To re-register: /memex:link-workspace.
 
 ## Gotchas
 
-- **Unlink is destructive at the registry layer, not on disk.** The workspace's `_MANIFEST.md`, closets, and facts.db remain. Don't pitch unlink as a "delete".
+- **Unlink is destructive at the registry layer, not on disk.** The workspace's `_MANIFEST.md` and closets remain. Don't pitch unlink as a "delete".
 - **Prefer `set-searchable false` for temporary hides.** Unlinking discards the registration date and forces a re-link to restore searchability. If the user just wants the source quiet for a while, point them to `python3 <sources.py> set-searchable <name> false`.
 - **No undo.** The registry has no history. Re-linking creates a fresh `registered:` date.
 - **Name is the only key.** If the user has multiple sources at similar paths, confirm by name before removing. The script does not prompt.

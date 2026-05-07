@@ -14,6 +14,6 @@
 
 ## What changed across versions
 
-For the v1 → v2 changes specifically. Closets pagination, typed-field `_CLOSETS.md`, summary-format-version `2`, temporal facts sidecar, typed-edge graph. See `memex/skills/upgrade/references/v1-to-v2.md`.
+For the v1 → v2 changes specifically. Closets pagination, typed-field `_CLOSETS.md`, summary-format-version `2`, typed-edge graph. See `memex/skills/upgrade/references/v1-to-v2.md`.
 
 Future major versions add their own playbooks under that directory. Init's role is just to point users at the right tool.

@@ -1,11 +1,12 @@
 ---
 name: consolidate
 description: >
-  Sweep the workspace for drift -- duplicate files, contradicted facts, and orphans -- on a
-  separate cadence from session-end. Use after a multi-agent push, before a milestone, daily
-  on heavily-used workspaces, when /memex:lint flags long-standing drift, or when the user
-  says "clean up", "consolidate", or "find duplicates". Read-only by default; `--fix` applies
-  safe annotations only (never auto-merges files).
+  Sweep the workspace for drift -- duplicate files, unannotated decision supersessions,
+  orphans, and bloated decisions logs -- on a separate cadence from session-end. Use after
+  a multi-agent push, before a milestone, daily on heavily-used workspaces, when
+  /memex:lint flags long-standing drift, or when the user says "clean up", "consolidate",
+  or "find duplicates". Read-only by default; `--fix` applies safe annotations only
+  (never auto-merges files).
 argument-hint: "[--fix] [--force]"
 disable-model-invocation: true
 ---
@@ -14,7 +15,7 @@ disable-model-invocation: true
 
 **Wikilink rule:** When referencing any file in markdown, always use `[[filename]]` wikilink format.
 
-Independent drift sweep that session-end deliberately doesn't do. Four phases run in order: dedup, contradictions, orphans, decisions compression. Read-only by default; `--fix` only applies safe annotations.
+Independent drift sweep that session-end deliberately doesn't do. Four phases run in order: dedup, decisions contradictions, orphans, decisions compression. Read-only by default; `--fix` only applies safe annotations.
 
 ---
 
@@ -40,16 +41,25 @@ Detect candidate duplicate files:
 
 ---
 
-## Step 2: Contradiction sweep
+## Step 2: Decisions contradiction sweep
 
-Resolve `facts.py` (`${CLAUDE_PLUGIN_ROOT}/scripts/facts.py` → `${CLAUDE_SKILL_DIR}/../../scripts/facts.py`). Run `facts.py contradictions`. It surfaces every `(subject, predicate)` pair with multiple distinct current objects.
+Read `decisions.md`. Scan newer entries for explicit override language referencing earlier entries:
 
-For each contradiction:
+> supersedes, replaces, dropped, no longer, instead of, reverses, overrides
 
-- Show the pair, all conflicting fact IDs, and objects.
-- Suggest: `Run /memex:facts supersede <id> '<correct value>'`.
+For each match:
 
-**With `--fix`:** If a contradiction has only two facts and one is clearly older (by `valid_from`), supersede the older one automatically and log the change. Otherwise, leave for user resolution.
+1. Find the older entry being referenced (string-match on the topic).
+2. Check whether it's already annotated with `~~strikethrough~~` and `(superseded YYYY-MM-DD)`.
+
+If unannotated:
+
+- Show the pair: old entry text, new entry text.
+- Suggest: "Annotate the old entry with strikethrough and a `(superseded <date>)` marker."
+
+**With `--fix`:** Apply the strikethrough + supersession marker automatically. Same logic as `/memex:lint --fix`'s decision-consistency annotation.
+
+This is keyword-explicit detection only. Don't infer contradictions from topical similarity. False positives are louder than false negatives in a write-back operation.
 
 ---
 
@@ -121,7 +131,7 @@ If `decisions.md` is at or above 95 lines and `--fix` is not set, surface a hard
 Append to `memory/.consolidate-runs.log` (format in [`references/locking.md`](references/locking.md)):
 
 ```
-YYYY-MM-DDTHH:MM:SS  dedup=<N> contradictions=<M> orphans=<K> decisions-compressed=<D>  status=<ok|partial>
+YYYY-MM-DDTHH:MM:SS  dedup=<N> decisions-contradictions=<M> orphans=<K> decisions-compressed=<D>  status=<ok|partial>
 ```
 
 Clear `memory/.consolidate.lock`.
@@ -136,8 +146,8 @@ Memex Consolidation Report
 DEDUP: [PASS / N candidate groups]
   [...]
 
-CONTRADICTIONS: [PASS / N pairs]
-  (subject) (predicate): {old object → new object} -- run /memex:facts supersede <id> '<value>'
+DECISIONS CONTRADICTIONS: [PASS / N unannotated pairs]
+  Old: <text> -- New: <text> -- fix: add ~~strikethrough~~ + (superseded YYYY-MM-DD)
   [...]
 
 ORPHANS: [PASS / N files]
@@ -162,7 +172,7 @@ End with: `Run /memex:lint for the per-check live report at any time.`
 ## Gotchas
 
 - The lock is best-effort. A killed process leaves it stale. Stale locks (over 30 min old) are treated as freed. See [`references/locking.md`](references/locking.md).
-- `--fix` only auto-supersedes contradictions where one fact is clearly older by `valid_from`. Anything ambiguous waits for the user.
+- `--fix` only annotates explicit decision supersessions (newer entry literally references the older with "supersedes/replaces/dropped/no longer/instead of/reverses/overrides"). Anything ambiguous waits for the user.
 - Dedup never auto-merges. `--fix` is for safe annotations only.
 - **Decisions compression preserves every unique fact.** Never paraphrase; never drop a fact because it feels redundant. The test is whether re-reading the compressed log in 6 months still recovers the original retrieval signal. Verbatim user-stated facts ("allergic to coffee", "raised $42K") stay verbatim.
 - **Decisions compression is the only place this happens.** Session-end no longer compresses decisions — it only appends. This skill is the compression owner; run it when `decisions.md` approaches the 100-line cap.

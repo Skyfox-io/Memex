@@ -6,7 +6,7 @@ description: >
   "/memex:idea ...", or any direct request to save a side thought without breaking flow. Do NOT
   fire on every "we should eventually..." or "what if" aside in conversation; most asides are
   not capture-intent. Not for routed work (lives in domain hubs), decisions (lives in decisions.md),
-  or facts (lives in /memex:facts).
+  or claims about state (lives in closets `claims:` field on the relevant file).
 argument-hint: "[idea description]"
 ---
 
@@ -54,5 +54,5 @@ Don't route now. Routing is session-end's job, or runs when the user asks.
 
 - **Don't route eagerly.** If the route looks obvious, still write to the inbox. Batched routing at session-end avoids fragmenting the inbox and lets the user review.
 - **Inbox file missing mid-session.** If the file vanished (renamed, moved), don't recreate silently in a new location. Re-resolve via the search order above; only create fresh when nothing matches.
-- **Not for facts or decisions.** A claim about state ("Alice now leads X") goes through `/memex:facts`. A locked-in choice goes in `decisions.md`. The inbox is for *unprocessed* sparks.
+- **Not for claims or decisions.** A claim about state ("Alice now leads X") goes in the relevant file's content (and surfaces via the closets `claims:` field). A locked-in choice goes in `decisions.md`. The inbox is for *unprocessed* sparks.
 - **One idea per entry.** If the user dumps three ideas at once, append three blocks, not one merged blob. Routing works per-entry.
