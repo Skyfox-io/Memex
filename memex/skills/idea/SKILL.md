@@ -1,42 +1,46 @@
 ---
 name: idea
 description: >
-  Capture an idea to the scratch inbox. Use when a new idea comes up during work.
+  Quick-capture an idea to the scratch inbox. Use only when the user explicitly asks to capture
+  an idea — phrases like "capture this", "add to ideas", "don't let me forget", "log this idea",
+  "/memex:idea ...", or any direct request to save a side thought without breaking flow. Do NOT
+  fire on every "we should eventually..." or "what if" aside in conversation — most asides are
+  not capture-intent. Not for routed work (lives in domain hubs), decisions (lives in decisions.md),
+  or facts (lives in /memex:facts).
 argument-hint: "[idea description]"
 ---
 
 # Memex - Capture Idea
 
-**Wikilink rule:** When referencing any file in any markdown content you write or edit, always use `[[filename]]` wikilink format. Never use plain text filenames.
+**Wikilink rule:** in any markdown you write, reference files as `[[filename]]`.
 
-Quick-capture an idea to the scratch inbox without breaking the current flow.
+Quick-capture to the scratch inbox. Routing happens later (session-end or on demand).
 
-## Step 1: Resolve ideas path
+## Step 1: Resolve the inbox path
 
-Run `WORKSPACE_ROOT=$(pwd) && echo "$WORKSPACE_ROOT"` via Bash.
+Search order:
+1. Workspace config table, if present.
+2. `scratch/ideas.md`.
+3. `ideas.md` at workspace root.
 
-Resolve the ideas file path: Config table (if present) > convention (`scratch/ideas.md` or `ideas.md`) > search for `ideas.md`.
+If none exist, create `scratch/ideas.md` (or `ideas.md` at root if there's no `scratch/` folder).
 
-If no ideas file exists anywhere, create it at `scratch/ideas.md` (or `ideas.md` at workspace root if no scratch folder exists).
+## Step 2: Capture
 
-## Step 2: Capture the idea
+Take the idea text from `$ARGUMENTS` or the user's message. If genuinely ambiguous, ask one clarifying question — otherwise just capture.
 
-Take the idea from `$ARGUMENTS` or the user's message. If the message is vague, ask one clarifying question.
-
-## Step 3: Append to ideas inbox
-
-Append to the resolved path:
+Append:
 
 ```markdown
 
 ### [brief title] - YYYY-MM-DD
-[The idea in 1-3 sentences]
--> Suggested route: [domain folder from Hub Map, or "unrouted" if no manifest]
+[idea in 1-3 sentences]
+-> Suggested route: [domain folder from Hub Map, or "unrouted"]
 ```
 
-If `_MANIFEST.md` exists, read the Hub Map to suggest a routing destination.
+If `_MANIFEST.md` exists, read its Hub Map to suggest a route. Otherwise mark `unrouted`.
 
-## Step 4: Confirm
+## Step 3: Confirm
 
 ```
 Idea captured: "[brief title]"
@@ -44,4 +48,11 @@ Idea captured: "[brief title]"
   Saved to: [resolved path]
 ```
 
-Do not route the idea now. Routing happens at session-end or when the user asks.
+Don't route now. Routing is session-end's job, or runs when the user asks.
+
+## Gotchas
+
+- **Don't route eagerly.** If the route looks obvious, still write to the inbox — batched routing at session-end avoids fragmenting the inbox and lets the user review.
+- **Inbox file missing mid-session.** If the file vanished (renamed, moved), don't recreate silently in a new location — re-resolve via the search order above; only create fresh when nothing matches.
+- **Not for facts or decisions.** A claim about state ("Alice now leads X") goes through `/memex:facts`. A locked-in choice goes in `decisions.md`. The inbox is for *unprocessed* sparks.
+- **One idea per entry.** If the user dumps three ideas at once, append three blocks, not one merged blob — routing works per-entry.

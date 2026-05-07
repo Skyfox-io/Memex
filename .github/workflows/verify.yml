@@ -13,11 +13,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Verify nonprofit example
+      - name: Verify nonprofit example wikilinks
         run: python3 memex/scripts/verify-wikilinks.py examples/nonprofit
 
-      - name: Verify startup example
+      - name: Verify startup example wikilinks
         run: python3 memex/scripts/verify-wikilinks.py examples/startup
+
+      - name: Verify nonprofit example typed-edge graph
+        run: python3 memex/scripts/extract-graph.py examples/nonprofit --check
+
+      - name: Verify startup example typed-edge graph
+        run: python3 memex/scripts/extract-graph.py examples/startup --check
 
   placeholders:
     name: No placeholder text in examples

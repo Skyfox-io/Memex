@@ -64,6 +64,12 @@ def strip_frontmatter(content):
     return content
 
 
+def _is_closets_file(rel):
+    """A closets file is _CLOSETS.md or its overflow sibling _CLOSETS-archive.md."""
+    base = os.path.basename(rel)
+    return base == "_CLOSETS.md" or base == "_CLOSETS-archive.md"
+
+
 def find_broken_links(workspace, all_files, known_stems, known_paths, skip_prefixes):
     """Find all broken wikilinks in markdown files."""
     broken = []
@@ -72,6 +78,10 @@ def find_broken_links(workspace, all_files, known_stems, known_paths, skip_prefi
         if not rel.endswith(".md"):
             continue
         if any(rel.startswith(p) for p in skip_prefixes):
+            continue
+        # Closets files are validated by find_closets_issues; skip here
+        # to avoid duplicate reporting of the same dangling reference.
+        if _is_closets_file(rel):
             continue
 
         full = os.path.join(workspace, rel)
@@ -223,14 +233,55 @@ def main():
         sys.exit(0)
     else:
         broken = find_broken_links(workspace, all_files, known_stems, known_paths, skip_prefixes)
+        closets_issues = find_closets_issues(workspace, all_files, known_stems, skip_prefixes)
+        exit_code = 0
         if broken:
             print(f"BROKEN WIKILINKS ({len(broken)} found):")
             for f, link in sorted(broken):
                 print(f"  {f}: [[{link}]]")
-            sys.exit(1)
-        else:
-            print("CLEAN - zero broken wikilinks")
-            sys.exit(0)
+            exit_code = 1
+        if closets_issues:
+            print(f"CLOSETS ISSUES ({len(closets_issues)} found):")
+            for f, line, msg in sorted(closets_issues):
+                loc = f"{f}:{line}" if line else f
+                print(f"  {loc}: {msg}")
+            # Closets issues are warnings, not errors - don't fail CI on them alone
+        if exit_code == 0 and not closets_issues:
+            print("CLEAN - zero broken wikilinks, closets valid")
+        elif exit_code == 0:
+            print("CLEAN wikilinks (closets issues above are warnings)")
+        sys.exit(exit_code)
+
+
+def find_closets_issues(workspace, all_files, known_stems, skip_prefixes):
+    """Validate _CLOSETS.md and _CLOSETS-archive.md structure across the workspace.
+
+    Each `## [[stem]]` heading must reference a real file. Missing
+    `<!-- memex-closets:N.N -->` marker is INFO, not an error.
+    """
+    issues = []
+    for rel in all_files:
+        if not _is_closets_file(rel):
+            continue
+        if any(rel.startswith(p) for p in skip_prefixes):
+            continue
+        full = os.path.join(workspace, rel)
+        try:
+            with open(full) as f:
+                content = f.read()
+        except Exception:
+            continue
+        if "<!-- memex-closets:" not in content:
+            issues.append((rel, 0, "missing memex-closets version marker"))
+        # Find headings of form "## [[stem]]"
+        for line_num, line in enumerate(content.split("\n"), 1):
+            m = re.match(r"##\s+\[\[([^\]|]+?)(?:\|[^\]]*)?\]\]\s*$", line.strip())
+            if not m:
+                continue
+            stem = os.path.splitext(m.group(1).strip())[0].lower()
+            if stem not in known_stems:
+                issues.append((rel, line_num, f"closet entry [[{m.group(1).strip()}]] points to missing file"))
+    return issues
 
 
 if __name__ == "__main__":

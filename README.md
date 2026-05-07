@@ -2,8 +2,11 @@
 
 **Structured memory for Claude Cowork. Pick up where you left off.**
 
-![Version](https://img.shields.io/badge/version-1.1.1-blue)
+![Version](https://img.shields.io/badge/version-2.0.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
+![Recall](https://img.shields.io/badge/LongMemEval--S%20R%405-90.1%25-brightgreen)
+
+> **90.1% Recall@5 on [LongMemEval-S](https://huggingface.co/datasets/xiaowu0162/longmemeval)** (Wu et al., ICLR 2025) — the published retrieval benchmark for long-term memory in chat assistants. Measured, reproducible in 3-5 minutes, $0. [Details below.](#validated-retrieval-quality)
 
 ---
 
@@ -15,14 +18,29 @@ Cowork Projects gives you persistent files, but files without a system is just a
 
 ## The Solution
 
-Memex converts your workspace into a connected knowledge system with persistent memory, tiered context loading, and full `[[wikilink]]` navigation.
+Memex converts your workspace into a connected knowledge system with persistent memory, tiered context loading, full `[[wikilink]]` navigation, a temporal facts model, and cross-workspace federation — all in pure markdown with zero runtime dependencies.
 
 - **Wikilinked knowledge base.** Every file reference becomes a `[[wikilink]]`. Your workspace builds into a connected graph over time. Open it in [Obsidian](https://obsidian.md/) to see how everything relates visually.
-- **Tiered context loading.** Tier 1 files load every session. Tier 2 loads when you're working in that area. Tier 3 stays archived until you ask for it. Claude only reads what it needs.
-- **Session automation.** Session-start gives you a 20-second briefing. Session-end updates memory, checks integrity, and writes a clean handoff.
+- **Two-tier index.** A `_MANIFEST.md` plus per-hub `_CLOSETS.md` files mean Claude knows what every file contains *without opening any of them*. Massive recall improvements on questions about specific subjects, not just topics.
+- **Temporal facts.** A SQLite sidecar (Python stdlib only) tracks subject-predicate-object facts with `valid_from` / `valid_to` dates, so when something changes — Mike got promoted, the office moved, the spring campaign was cancelled — the old fact gets stamped, not overwritten. Contradiction detection catches drift automatically.
+- **Typed-edge graph.** Optional YAML frontmatter (`supersedes`, `blocks`, `people`, `projects`) builds a typed knowledge graph at session-end. Zero LLM calls; pure regex.
+- **Cross-workspace federation.** Register multiple workspaces (nonprofit, personal, work) in a global registry and search across all of them with `/memex:cross-search`. Privacy-first: opt-in per source.
+- **Standalone consolidation cycle.** `/memex:consolidate` runs dedup, contradiction sweep, and orphan check independently from session-end, so a session timeout doesn't compound drift.
 - **Convention over configuration.** Drop files in standard locations and they just work. No config tables to maintain.
-- **Hub-and-spoke navigation.** Memex uses a hub-and-spoke system to give Claude full awareness of your workspace while only loading what the current task needs. The manifest knows everything. Claude reads the minimum. This keeps token costs low and context quality high across sessions of any size.
-- **Zero dependencies.** Markdown files. No database, no server, no runtime.
+- **Zero dependencies.** Markdown files plus stdlib Python. No database server, no API keys, no embeddings backend, no cloud.
+
+### Validated retrieval quality
+
+Memex is benchmarked on [LongMemEval-S](https://huggingface.co/datasets/xiaowu0162/longmemeval) (Wu et al., ICLR 2025), the standard benchmark for long-term memory in chat assistants. R@5 is the share of questions where the top-5 retrieved sessions include a ground-truth answer session.
+
+| Metric | Memex (`closets:emax`) |
+|---|---|
+| **Recall@5** | **90.1%** |
+| Recall@10 | 94.6% |
+| Hit@5 | 96.4% |
+| MRR | 0.880 |
+
+500 questions. Within 0.5pp of `content:bm25` (the upper bound that indexes the entire raw session text), at roughly 1/10th the size — because closets are typed and structured, not raw transcripts. Reproduce in 3-5 minutes with `python benchmarks/longmemeval/run_bench.py --strategies closets:emax`. Full harness and per-category breakdown in [`benchmarks/longmemeval/`](benchmarks/longmemeval/).
 
 ---
 
@@ -111,14 +129,22 @@ your-workspace/
 | Skill | What it does |
 |-------|-------------|
 | `/memex:init` | Set up, adopt, health-check, or upgrade a workspace |
+| `/memex:upgrade` | One-command v1→v2 migration: orchestrates resummarize + reindex + lint, idempotent on re-run |
 | `/memex:session-start` | Briefing at session open |
-| `/memex:session-end` | Close cleanly: update memory, log decisions, verify links |
+| `/memex:session-end` | Close cleanly: update memory, log decisions, refresh closets, verify links + graph |
 | `/memex:update` | Mid-session flush: save status without closing |
 | `/memex:idea` | Quick-capture an idea to the inbox |
-| `/memex:add-domain` | Add a new domain folder with hub index |
+| `/memex:add-domain` | Add a new domain folder with hub index and closets file |
 | `/memex:archive` | Move a file from active to archived in the manifest |
 | `/memex:wikilinks` | Check for broken links and convert plain text references to `[[wikilinks]]` |
-| `/memex:lint` | Audit workspace health: stale status, contradictions, orphans |
+| `/memex:lint` | Audit workspace health: stale status, contradictions, orphans, dangling typed edges, summary version |
+| `/memex:resummarize` | Refresh manifest + hub summaries to v2 retrieval-tuned format |
+| `/memex:reindex` | Backfill or rebuild every hub's `_CLOSETS.md` from underlying file content |
+| `/memex:facts` | Query, add, or reconcile temporal facts in the SQLite knowledge graph |
+| `/memex:consolidate` | Run dedup, contradiction sweep, and orphan check (independent of session-end) |
+| `/memex:link-workspace` | Register the current workspace in the global source registry |
+| `/memex:unlink-workspace` | Deregister a workspace from the global source registry |
+| `/memex:cross-search` | Grep across linked workspaces' manifests + closets, plus query each source's facts.db |
 
 ---
 
@@ -175,7 +201,11 @@ See [docs/obsidian-setup.md](docs/obsidian-setup.md) for detailed setup instruct
 
 ## Architecture
 
-See [ARCHITECTURE.md](ARCHITECTURE.md) for design decisions and intentional non-features.
+See [ARCHITECTURE.md](ARCHITECTURE.md) for design decisions and intentional non-features. The v2 feature set — closets two-tier index, temporal facts SQLite sidecar, typed-edge graph, cross-workspace federation — is summarized in [CHANGELOG.md](CHANGELOG.md#200---2026-05-05).
+
+## Benchmarks
+
+Reproducible retrieval benchmark on LongMemEval-S in [benchmarks/longmemeval/](benchmarks/longmemeval/). Five extractors (content / summary / firstmsg / closets / haiku) × eight rankers (BM25, single-vector embed, multi-vector pools, RRF fusions, ensemble) × 500 questions × six question categories, with paired-bootstrap confidence intervals via `compare.py`. Free, deterministic, runs in 3-5 minutes for the headline. The headline strategy `closets:emax` lands at **90.1% R@5** — within 0.5pp of the full-text upper bound at ~10× smaller representation.
 
 ## Contributing
 

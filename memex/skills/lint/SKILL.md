@@ -1,17 +1,21 @@
 ---
 name: lint
 description: >
-  Audit workspace health -- stale status, contradicted decisions, orphan files, broken hub refs.
-  Run after returning from a break, before a milestone, or when things feel out of sync.
+  Audit workspace structural health -- stale status.md, unannotated superseded decisions,
+  orphan files (on disk but not in any hub), stale blockers, dangling typed edges, manifest
+  drift, missing `_CLOSETS.md`, outdated summary-format version. Read-only by default; `--fix`
+  applies safe annotations. Trigger after returning from a break, before a milestone or release,
+  when something feels out of sync, when status/decisions look stale, or when the user asks
+  "is this workspace healthy". For wikilink integrity specifically, use `/memex:wikilinks`
+  -- lint does not re-scan link targets.
 argument-hint: "[--fix]"
-disable-model-invocation: true
 ---
 
 # Memex - Lint
 
 **Wikilink rule:** When referencing any file in any markdown content you write or edit, always use `[[filename]]` wikilink format. Never use plain text filenames.
 
-Audit the workspace for semantic drift and structural issues. Read-only by default.
+Audit semantic drift and structural integrity. Read-only by default. Eight checks, one report.
 
 ---
 
@@ -21,7 +25,7 @@ Run `WORKSPACE_ROOT=$(pwd) && echo "$WORKSPACE_ROOT"` via Bash.
 
 Check if `_MANIFEST.md` exists at the workspace root.
 
-- **No manifest:** Tell the user "Memex is not initialized. Run `/memex:init` first." and stop.
+- **No manifest:** "Memex is not initialized. Run `/memex:init` first." Stop.
 - **Manifest exists** (with or without `<!-- memex-managed` marker): Continue.
 
 ---
@@ -30,24 +34,104 @@ Check if `_MANIFEST.md` exists at the workspace root.
 
 Read `_MANIFEST.md`. Parse:
 
-- **Tier 1 table** -- list of always-loaded files with paths
+- **Tier 1 table** -- always-loaded files with paths
 - **Tier 2 sections** -- domain sections with hub references
 - **Tier 3 table** -- archived files
 - **Hub Map** -- domain-to-hub mapping
 
-Resolve file paths using: Config table (if present) > convention (`memory/`) > search.
+Resolve paths via: Config table (if present) > convention (`memory/`) > search.
 
 ---
 
 ## Step 3: Run checks
 
-Read `references/checks.md` for the full check definitions. Execute each check category in order and collect findings. Each finding has a severity (WARN or INFO) and a suggested fix.
+Execute each check in order. Collect findings as `WARN` (actionable) or `INFO` (observational).
+
+### 3.1 Status Freshness
+
+Read `status.md`. Parse the `Last updated: YYYY-MM-DD` line.
+
+- **WARN** if more than 3 days old. Include the exact date and day count.
+- **PASS** if 3 days or fewer.
+- **WARN** if no `Last updated` line at all.
+
+### 3.2 Decision Consistency
+
+Read `decisions.md` in full. Scan newer entries for override language referencing earlier entries:
+
+> supersedes, replaces, dropped, no longer, instead of, reverses, overrides
+
+For each match, check whether the older entry being referenced is annotated with `~~strikethrough~~`.
+
+- **WARN** for each unannotated superseded entry. Include both old and new text.
+- **PASS** if no unannotated contradictions found.
+
+Do not infer contradictions from topical similarity. Only flag entries where the override relationship is explicit.
+
+### 3.3 Orphan Files
+
+For each domain in the Hub Map:
+
+1. Read the hub index file.
+2. Parse the hub's file table; extract filenames from `[[wikilinks]]`.
+3. List all `.md` files on disk in that domain's folder, excluding the hub index, `_CLOSETS.md`, and `_CLOSETS-archive.md`.
+4. Compare.
+
+- **WARN** for each file on disk not in the hub table.
+- **INFO** for each hub entry pointing to a missing file.
+- **PASS** if all files match.
+
+Skip `memory/` and `scratch/` -- Tier 1, managed by manifest, not hubs.
+
+### 3.4 Stale Blockers
+
+Read `status.md`'s `## Blocked` (or `## What's Blocked`) section. For each item:
+
+1. Read `session-log.md` (all entries).
+2. Search for mentions of the blocker text or close paraphrases.
+3. Count how many sessions mention it without resolution.
+
+- **WARN** if a blocker appears unchanged across ≥ 3 session-log entries OR has been present > 7 days based on session dates.
+- **PASS** if no stale blockers, or `Blocked` is empty / says "None".
+
+### 3.5 Closets Coverage
+
+For each `[[*-index]]` row in the Hub Map, check whether `<hub-folder>/_CLOSETS.md` exists.
+
+- **WARN** for each hub missing `_CLOSETS.md`. Suggest: "run `/memex:reindex` to backfill."
+- **PASS** if every hub has closets.
+
+Skip if the workspace has no `<!-- memex-managed` marker (compatible mode predates v2).
+
+### 3.6 Typed-Edge Graph Integrity
+
+Resolve `extract-graph.py` (`${CLAUDE_PLUGIN_ROOT}/scripts/extract-graph.py` → `${CLAUDE_SKILL_DIR}/../../scripts/extract-graph.py`). Run with `--check` against the workspace. Exits 1 with dangling-edge list if any typed-edge frontmatter (`supersedes`, `superseded-by`, `blocks`, `blocked-by`, `people`, `projects`) targets a missing file.
+
+- **WARN** for each dangling edge: `[[source]] <edge-type> → [[target]] (target file not found)`.
+- **PASS** if no dangling edges, OR if the script is unavailable (typed edges are opt-in -- see Gotchas), OR if no files have frontmatter.
+
+### 3.7 Summary Format Version
+
+Read `<!-- summary-format-version:N -->` from `_MANIFEST.md`.
+
+- **PASS** if marker says `2`.
+- **WARN** if missing or lower. Suggest: "run `/memex:resummarize` to upgrade summaries to v2."
+
+Skip if the workspace has no `<!-- memex-managed` marker (compatible mode).
+
+### 3.8 Manifest Consistency
+
+For each row in the Hub Map, Tier 1 table, and Tier 3 table, verify the file exists on disk.
+
+- **WARN** for each missing Hub Map or Tier 1 entry.
+- **INFO** for each missing Tier 3 entry (lower priority -- archived).
+- **PASS** if all referenced files exist.
 
 ---
 
-## Step 4: Report
+## Step 4: Emit the report
 
-Output the health report. Exact format:
+Exact layout:
 
 ```
 Memex Health Report
@@ -69,13 +153,27 @@ STALE BLOCKERS: [PASS / N issues]
   [WARN] Blocker "[text]" unchanged for [N] days across [N] sessions -- fix: resolve or update in status.md
   ...
 
+CLOSETS COVERAGE: [PASS / N issues]
+  [WARN] Hub [[hub-name]] is missing _CLOSETS.md -- fix: run /memex:reindex
+  ...
+
+TYPED-EDGE GRAPH: [PASS / N issues]
+  [WARN] [[source]] `<edge-type>` → [[target]] (target file not found) -- fix: create target file or remove frontmatter reference
+  ...
+
+SUMMARY FORMAT VERSION: [PASS / N issues]
+  [WARN] Manifest summary-format-version is v1 (or missing) -- fix: run /memex:resummarize to upgrade
+  ...
+
 MANIFEST CONSISTENCY: [PASS / N issues]
   [WARN] Hub [[hub-name]] listed in Hub Map but file not found on disk -- fix: create hub or remove from map
   [WARN] Tier 1 file [[name]] not found on disk -- fix: create file or remove from manifest
   ...
 
-Summary: [N] warnings, [M] info across 5 checks
+Summary: [N] warnings, [M] info across 8 checks
 ```
+
+If a category has no findings, the body collapses to a single `PASS` line.
 
 If all checks pass:
 
@@ -87,28 +185,55 @@ All checks passed. Workspace is clean.
 
 ---
 
-## Step 5: Offer fixes
+## Step 5: Suggested next actions footer
 
-If the user passed `--fix` via `$ARGUMENTS` or asks to fix issues after seeing the report:
+Below the report (skip if all checks PASS), append:
 
-**Safe fixes (apply without per-item confirmation):**
-- Annotate superseded decisions with ~~strikethrough~~ and date pointers
-- Remove hub entries that point to files that no longer exist on disk
-- Update manifest entries for missing summaries
+```
+Suggested next actions:
+  • [if SUMMARY FORMAT VERSION failed] Run /memex:resummarize to upgrade summaries.
+  • [if CLOSETS COVERAGE failed] Run /memex:reindex to backfill _CLOSETS.md files.
+  • [if SUMMARY FORMAT VERSION and CLOSETS COVERAGE both failed] Run /memex:upgrade to do both in sequence.
+  • [if DECISION CONSISTENCY failed] Run /memex:lint --fix to annotate superseded decisions.
+  • [if ORPHAN FILES has hub-table dangling entries (INFO)] Run /memex:lint --fix to remove dead hub entries.
+  • [if TYPED-EDGE GRAPH failed] Open the source file and fix or remove the dangling frontmatter reference. Typed edges are not facts — do not run /memex:facts.
+  • [if STATUS FRESHNESS failed] Run /memex:update to refresh status.md.
+  • [if STALE BLOCKERS failed] Edit status.md to resolve or restate the blocker.
+  • [if any wikilink targets in the workspace look broken outside lint's scope] Run /memex:wikilinks to verify [[link]] integrity (lint does not check link targets).
+  • [if anything else looks like long-standing drift, including subject-predicate-object fact contradictions surfaced by /memex:consolidate] Run /memex:consolidate for a deeper sweep (dedup, contradictions, orphans).
+```
 
-**Destructive fixes (confirm each individually):**
-- Remove orphan files from disk
-- Remove Tier 1 entries for files that don't exist
+Only include lines whose triggering check failed. Omit the section entirely if everything passed.
 
-After applying fixes, re-run the checks and output an updated report showing what was resolved.
+---
 
-If the user didn't ask for fixes, stop after the report. Do not prompt to fix.
+## Step 6: Apply fixes (only if `--fix` or user confirms)
+
+**Safe fixes -- apply without per-item confirmation:**
+
+- Annotate superseded decisions with `~~strikethrough~~` and date pointers.
+- Remove hub entries pointing to files no longer on disk.
+- Update manifest entries for missing summaries.
+
+**Destructive fixes -- confirm each one individually:**
+
+- Remove orphan files from disk.
+- Remove Tier 1 entries for files that don't exist.
+
+After applying fixes, re-run all eight checks and emit an updated report.
+
+If the user didn't ask for fixes, stop after Step 5. Do not prompt.
 
 ---
 
 ## Gotchas
 
-- Lint is read-only by default. The `--fix` flag or explicit user request is required before writing any file.
-- Don't duplicate wikilink verification. That's `/memex:wikilinks`. Lint checks structural health, not link integrity.
-- Orphan detection uses the manifest and hub files as the source of truth. A file that exists on disk but isn't in any hub is an orphan, even if it has valid wikilinks pointing to it.
-- Lint scans domain folders listed in the Hub Map. It does not crawl the entire workspace for unknown folders. Use session-start or session-end for untracked folder detection.
+- **Read-only by default.** Without `--fix` (via `$ARGUMENTS`) or explicit user confirmation, never write a file.
+- **Not a wikilink checker.** Lint validates manifest/hub/decision structure. Broken `[[link]]` targets are out of scope -- run `/memex:wikilinks`.
+- **Orphan = "not in any hub", not "not linked".** A file with inbound `[[wikilinks]]` from across the workspace is still an orphan if no hub table lists it. Hubs are the source of truth.
+- **Scope is the Hub Map, not the disk.** Lint walks domain folders named in the Hub Map. Untracked top-level folders, `_archive/` siblings, or orphan domains are invisible here -- those surface in session-start/session-end scans.
+- **Decision-supersede detection is keyword-based.** Only flags when a newer entry literally contains "supersedes/replaces/dropped/no longer/instead of/reverses/overrides". Semantic contradictions without those phrases pass silently. False negatives over false positives by design.
+- **`extract-graph.py` missing → graph check passes silently.** Typed edges are opt-in. If the script is unresolvable on both `${CLAUDE_PLUGIN_ROOT}` and `${CLAUDE_SKILL_DIR}/../../scripts/`, the TYPED-EDGE GRAPH category reports PASS, not WARN. Don't read a passing graph check as proof the graph is healthy unless you've confirmed the script ran.
+- **Stale-blocker check needs `session-log.md`.** If session-log is missing or empty, blockers can't be aged. The check passes by default -- don't conflate that with "no stale blockers".
+- **Closets coverage check ignores compatible-mode workspaces.** Without a `<!-- memex-managed` marker, the workspace predates v2 conventions; nagging about `_CLOSETS.md` would just spam.
+- **Suggested next actions are advisory.** Lint never auto-runs `/memex:reindex`, `/memex:resummarize`, or `/memex:consolidate` -- the footer points at them so the user (or another agent) can decide.

@@ -1,28 +1,28 @@
 ---
 name: wikilinks
 description: >
-  Check wikilink integrity and convert plain text to [[wikilinks]]. Run after reorganizing files,
-  renaming documents, adding content in bulk, or when the Obsidian graph shows disconnected nodes.
+  Verify wikilink integrity (broken `[[targets]]`), then optionally suggest plain-text-to-wikilink
+  conversions across the workspace. Explicit-invocation only — the conversion sweep is a workspace-wide
+  bulk edit (auto-firing on a casual rename could propose hundreds of changes). Use when the
+  user runs `/memex:wikilinks` directly, or says "verify wikilinks", "check for broken links",
+  "convert plain text references to wikilinks", or "fix the Obsidian graph". For broader workspace
+  audit (orphan files, stale status, manifest drift), use `/memex:lint` instead.
+disable-model-invocation: true
 ---
 
 # Memex - Wikilinks
 
 **Wikilink rule:** When referencing any file in any markdown content you write or edit, always use `[[filename]]` wikilink format. Never use plain text filenames.
 
-Two modes: **check** for broken links, and **convert** to find plain text references that should be wikilinks.
+Two modes: **verify** broken links, then **suggest** plain-text → `[[wikilink]]` conversions.
 
 ## Step 1: Find workspace root
 
 Run `WORKSPACE_ROOT=$(pwd) && echo "$WORKSPACE_ROOT"` via Bash.
 
-## Step 2: Check for broken wikilinks
+## Step 2: Verify wikilink integrity
 
-Resolve the verification script path:
-
-1. `${CLAUDE_PLUGIN_ROOT}/scripts/verify-wikilinks.py` (if set)
-2. `${CLAUDE_SKILL_DIR}/../scripts/verify-wikilinks.py` (fallback)
-
-Run with skip flags:
+Run `verify-wikilinks.py` (path resolution as in [session-end](../session-end/SKILL.md) Step 8a):
 
 ```bash
 python3 [script-path] "$WORKSPACE_ROOT" --skip .claude .obsidian .git
@@ -30,33 +30,33 @@ python3 [script-path] "$WORKSPACE_ROOT" --skip .claude .obsidian .git
 
 If the script can't be found, report: "Wikilink script not found - skipping." Do not silently pass.
 
-Report results:
+Report:
 
-If clean:
 ```
 Broken links: 0
 ```
 
-If broken:
+or:
+
 ```
 BROKEN WIKILINKS ([count] found):
   [file]: [[broken-link]]
 ```
 
-Offer to fix broken links:
-- If target was renamed, update the link
-- If target was deleted, remove the link or replace with plain text
-- If target never existed, flag it for the user to decide
+Offer fixes:
+- Target renamed → update the link
+- Target deleted → remove the link or replace with plain text
+- Target never existed → flag for the user to decide
 
-## Step 3: Scan for missing wikilinks
+## Step 3: Suggest wikilink conversions
 
-Run the same script with `--suggest` to find plain text references that should be wikilinks:
+Re-run the script with `--suggest`:
 
 ```bash
 python3 [script-path] "$WORKSPACE_ROOT" --suggest --skip .claude .obsidian .git
 ```
 
-The script scans all markdown files for plain text mentions of filenames that exist in the workspace but aren't inside `[[wikilinks]]`. It handles exact matches, hyphenated-to-space matches, and skips code blocks, URLs, and frontmatter.
+Scans markdown for plain-text mentions of existing filenames that aren't already `[[wrapped]]`. Handles exact and hyphenated-to-space matches. Skips code blocks, URLs, and frontmatter.
 
 ## Step 4: Present conversion suggestions
 
@@ -92,6 +92,8 @@ Obsidian graph: [count] nodes, [count] edges
 
 ## Gotchas
 
-- The `--suggest` mode matches filenames as whole words. Short filenames (3 characters) can produce false positives, e.g., `api.md` matches every mention of "API" in prose. Review suggestions before applying all.
-- Code blocks and URLs are stripped before scanning, but inline code (single backticks) containing filenames may still produce false suggestions.
-- The script skips `.claude/`, `.obsidian/`, `.git/` by default. If your workspace has other non-content directories, add them to the `--skip` flags.
+- **Script missing → hard stop, not silent pass.** If neither resolution path finds `verify-wikilinks.py`, surface "Wikilink script not found - skipping." Reporting "0 broken" without a script run is a lie.
+- **Short-filename false positives in `--suggest`.** Filenames ≤3 chars match common words (e.g., `api.md` matches every "API" in prose). Always review one-by-one before bulk-applying.
+- **Inline code (single backticks) is not stripped.** Triple-fenced code blocks and URLs are excluded, but a backticked filename like "filename.md" in running prose can produce phantom suggestions.
+- **Skip list is not exhaustive.** Default skips: `.claude/`, `.obsidian/`, `.git/`. Vendored deps, build outputs, or `node_modules/` need extra `--skip` flags or you'll get noise.
+- **Verify ≠ orphan check.** This skill confirms `[[link]]` targets resolve. It does NOT detect files-on-disk-but-not-in-any-hub. That's `/memex:lint`.
