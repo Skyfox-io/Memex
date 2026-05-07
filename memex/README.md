@@ -1,28 +1,28 @@
 # Memex
 
-Structured memory for Claude. Persistent context across sessions, so Claude starts every conversation already oriented — not from scratch.
+Structured memory for Claude. Persistent context across sessions, so Claude starts every conversation already oriented, not from scratch.
 
-**90.1% Recall@5 on [LongMemEval-S](https://huggingface.co/datasets/xiaowu0162/longmemeval)** (Wu et al., ICLR 2025). Reproducible in 3-5 minutes, $0. See `benchmarks/longmemeval/`.
+**90.1% Recall@5 on [LongMemEval-S](https://github.com/xiaowu0162/LongMemEval)** (Wu et al., ICLR 2025). Reproducible in 3-5 minutes, $0. See `benchmarks/longmemeval/`.
 
 ## What it does
 
-- **Tiered context loading** — Tier 1 always-load files, Tier 2 domain hubs on demand, Tier 3 archived. Claude only reads what it needs.
-- **Two-tier index** — `_MANIFEST.md` plus per-hub `_CLOSETS.md` files mean Claude knows what every file contains *without opening any of them*. Field-typed retrieval (subjects / people / claims / decisions / dates / status) — the moat behind the 90.1% R@5 result.
-- **Temporal facts** — SQLite sidecar (`memory/.facts.db`, stdlib only) tracks `(subject, predicate, object)` triples with `valid_from`/`valid_to` dates. Mike got promoted? The old fact gets stamped, not overwritten. Contradiction detection catches drift.
-- **Typed-edge graph** — optional YAML frontmatter (`supersedes`, `blocks`, `people`, `projects`) auto-extracted into a knowledge graph at session-end. Pure regex; zero LLM calls.
-- **Cross-workspace federation** — register multiple workspaces in a global registry; search across all of them with `/memex:cross-search`. Privacy-first: opt-in per source.
-- **Wikilinks everywhere** — every file reference becomes `[[wikilink]]` format. Open in Obsidian to see the graph.
-- **Zero dependencies** — markdown plus Python stdlib. No database server, no API keys, no embeddings backend, no cloud.
+- **Tiered context loading.** Tier 1 always-load files, Tier 2 domain hubs on demand, Tier 3 archived. Claude only reads what it needs.
+- **Two-tier index.** `_MANIFEST.md` plus per-hub `_CLOSETS.md` files mean Claude knows what every file contains *without opening any of them*. Field-typed retrieval (subjects / people / claims / decisions / dates / status), the moat behind the 90.1% R@5 result.
+- **Temporal facts.** SQLite sidecar (`memory/.facts.db`, stdlib only) tracks `(subject, predicate, object)` triples with `valid_from`/`valid_to` dates. Mike got promoted? The old fact gets stamped, not overwritten. Contradiction detection catches drift.
+- **Typed-edge graph.** Optional YAML frontmatter (`supersedes`, `blocks`, `people`, `projects`) auto-extracted into a knowledge graph at session-end. Pure regex; zero LLM calls.
+- **Cross-workspace federation.** Register multiple workspaces in a global registry; search across all of them with `/memex:cross-search`. Privacy-first: opt-in per source.
+- **Wikilinks everywhere.** Every file reference becomes `[[wikilink]]` format. Open in Obsidian to see the graph.
+- **Zero dependencies.** Markdown plus Python stdlib. No database server, no API keys, no embeddings backend, no cloud.
 
 ## Quick start
 
 1. Open a Cowork session in your workspace.
 2. Type `/memex:init`.
-3. Done — future sessions auto-brief via the SessionStart hook.
+3. Done. Future sessions auto-brief via the SessionStart hook.
 
 Empty workspace? Init scaffolds in under 30 seconds. Existing files? Init scans and wires them into a manifest without moving anything.
 
-**Upgrading from v1?** Open a session in any v1 Memex workspace; the briefing will surface a `Memex upgrade available — run /memex:upgrade` prompt. One command, idempotent on re-run.
+**Upgrading from v1?** Open a session in any v1 Memex workspace; the briefing will surface a `Memex upgrade available. Run /memex:upgrade` prompt. One command, idempotent on re-run.
 
 ## Skills
 
@@ -48,9 +48,9 @@ Empty workspace? Init scaffolds in under 30 seconds. Existing files? Init scans 
 
 ## How it works
 
-`_MANIFEST.md` at the workspace root is a routing map — it tells Claude what files exist, which tier they belong to, and what each domain hub is. Per-hub `_CLOSETS.md` files extend that with typed-field summaries of every file's distinct subjects, named entities, decisions, and dates — so Claude can decide which 0–2 files a question actually needs without opening 12.
+`_MANIFEST.md` at the workspace root is a routing map. It tells Claude what files exist, which tier they belong to, and what each domain hub is. Per-hub `_CLOSETS.md` files extend that with typed-field summaries of every file's distinct subjects, named entities, decisions, and dates, so Claude can decide which 0-2 files a question actually needs without opening 12.
 
-The `memory/` folder holds always-loaded files: `status.md`, `session-log.md`, `decisions.md`, `glossary.md`. Kept small so loading them doesn't burn context.
+The `memory/` folder holds always-loaded files: `status.md`, `session-log.md`, `decisions.md`, `glossary.md`, kept small so loading them doesn't burn context.
 
 Domain folders hold actual work. Claude only reads domain files when a task requires them.
 

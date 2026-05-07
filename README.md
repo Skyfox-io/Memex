@@ -2,11 +2,11 @@
 
 **Structured memory for Claude Cowork. Pick up where you left off.**
 
-![Version](https://img.shields.io/badge/version-2.0.0-blue)
+![Version](https://img.shields.io/badge/version-2.1.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Recall](https://img.shields.io/badge/LongMemEval--S%20R%405-90.1%25-brightgreen)
 
-> **90.1% Recall@5 on [LongMemEval-S](https://huggingface.co/datasets/xiaowu0162/longmemeval)** (Wu et al., ICLR 2025) — the published retrieval benchmark for long-term memory in chat assistants. Measured, reproducible in 3-5 minutes, $0. [Details below.](#validated-retrieval-quality)
+> **90.1% Recall@5 on LongMemEval-S** (Wu et al., ICLR 2025). Memex gives Claude Cowork persistent memory across sessions in pure markdown, with no external dependencies.
 
 ---
 
@@ -18,11 +18,11 @@ Cowork Projects gives you persistent files, but files without a system is just a
 
 ## The Solution
 
-Memex converts your workspace into a connected knowledge system with persistent memory, tiered context loading, full `[[wikilink]]` navigation, a temporal facts model, and cross-workspace federation — all in pure markdown with zero runtime dependencies.
+Memex converts your workspace into a connected knowledge system with persistent memory, tiered context loading, full `[[wikilink]]` navigation, a temporal facts model, and cross-workspace federation. All in pure markdown with zero runtime dependencies.
 
 - **Wikilinked knowledge base.** Every file reference becomes a `[[wikilink]]`. Your workspace builds into a connected graph over time. Open it in [Obsidian](https://obsidian.md/) to see how everything relates visually.
 - **Two-tier index.** A `_MANIFEST.md` plus per-hub `_CLOSETS.md` files mean Claude knows what every file contains *without opening any of them*. Massive recall improvements on questions about specific subjects, not just topics.
-- **Temporal facts.** A SQLite sidecar (Python stdlib only) tracks subject-predicate-object facts with `valid_from` / `valid_to` dates, so when something changes — Mike got promoted, the office moved, the spring campaign was cancelled — the old fact gets stamped, not overwritten. Contradiction detection catches drift automatically.
+- **Temporal facts.** A SQLite sidecar (Python stdlib only) tracks subject-predicate-object facts with `valid_from` / `valid_to` dates, so when something changes (Mike got promoted, the office moved, the spring campaign was cancelled), the old fact gets stamped, not overwritten. Contradiction detection catches drift automatically.
 - **Typed-edge graph.** Optional YAML frontmatter (`supersedes`, `blocks`, `people`, `projects`) builds a typed knowledge graph at session-end. Zero LLM calls; pure regex.
 - **Cross-workspace federation.** Register multiple workspaces (nonprofit, personal, work) in a global registry and search across all of them with `/memex:cross-search`. Privacy-first: opt-in per source.
 - **Standalone consolidation cycle.** `/memex:consolidate` runs dedup, contradiction sweep, and orphan check independently from session-end, so a session timeout doesn't compound drift.
@@ -31,7 +31,7 @@ Memex converts your workspace into a connected knowledge system with persistent 
 
 ### Validated retrieval quality
 
-Memex is benchmarked on [LongMemEval-S](https://huggingface.co/datasets/xiaowu0162/longmemeval) (Wu et al., ICLR 2025), the standard benchmark for long-term memory in chat assistants. R@5 is the share of questions where the top-5 retrieved sessions include a ground-truth answer session.
+Memex is benchmarked on [LongMemEval-S](https://github.com/xiaowu0162/LongMemEval) (Wu et al., ICLR 2025), the standard benchmark for long-term memory in chat assistants. R@5 is the share of questions where the top-5 retrieved sessions include a ground-truth answer session.
 
 | Metric | Memex (`closets:emax`) |
 |---|---|
@@ -40,7 +40,7 @@ Memex is benchmarked on [LongMemEval-S](https://huggingface.co/datasets/xiaowu01
 | Hit@5 | 96.4% |
 | MRR | 0.880 |
 
-500 questions. Within 0.5pp of `content:bm25` (the upper bound that indexes the entire raw session text), at roughly 1/10th the size — because closets are typed and structured, not raw transcripts. Reproduce in 3-5 minutes with `python benchmarks/longmemeval/run_bench.py --strategies closets:emax`. Full harness and per-category breakdown in [`benchmarks/longmemeval/`](benchmarks/longmemeval/).
+500 questions, within 0.5pp of `content:bm25` (the upper bound that indexes the entire raw session text), at roughly 1/10th the size, because closets are typed and structured, not raw transcripts. Reproduce in 3-5 minutes with `python benchmarks/longmemeval/run_bench.py --strategies closets:emax`. Full harness and per-category breakdown in [`benchmarks/longmemeval/`](benchmarks/longmemeval/).
 
 ---
 
@@ -141,7 +141,8 @@ your-workspace/
 | `/memex:resummarize` | Refresh manifest + hub summaries to v2 retrieval-tuned format |
 | `/memex:reindex` | Backfill or rebuild every hub's `_CLOSETS.md` from underlying file content |
 | `/memex:facts` | Query, add, or reconcile temporal facts in the SQLite knowledge graph |
-| `/memex:consolidate` | Run dedup, contradiction sweep, and orphan check (independent of session-end) |
+| `/memex:consolidate` | Run dedup, contradiction sweep, orphan check, decisions compression (independent of session-end) |
+| `/memex:search` | Cross-hub search within the current workspace: grep manifest + every `_CLOSETS.md` + facts.db, grouped by folder |
 | `/memex:link-workspace` | Register the current workspace in the global source registry |
 | `/memex:unlink-workspace` | Deregister a workspace from the global source registry |
 | `/memex:cross-search` | Grep across linked workspaces' manifests + closets, plus query each source's facts.db |
@@ -201,11 +202,11 @@ See [docs/obsidian-setup.md](docs/obsidian-setup.md) for detailed setup instruct
 
 ## Architecture
 
-See [ARCHITECTURE.md](ARCHITECTURE.md) for design decisions and intentional non-features. The v2 feature set — closets two-tier index, temporal facts SQLite sidecar, typed-edge graph, cross-workspace federation — is summarized in [CHANGELOG.md](CHANGELOG.md#200---2026-05-05).
+See [ARCHITECTURE.md](ARCHITECTURE.md) for design decisions and intentional non-features. The v2 feature set. Closets two-tier index, temporal facts SQLite sidecar, typed-edge graph, cross-workspace federation. Is summarized in [CHANGELOG.md](CHANGELOG.md#200---2026-05-05).
 
 ## Benchmarks
 
-Reproducible retrieval benchmark on LongMemEval-S in [benchmarks/longmemeval/](benchmarks/longmemeval/). Five extractors (content / summary / firstmsg / closets / haiku) × eight rankers (BM25, single-vector embed, multi-vector pools, RRF fusions, ensemble) × 500 questions × six question categories, with paired-bootstrap confidence intervals via `compare.py`. Free, deterministic, runs in 3-5 minutes for the headline. The headline strategy `closets:emax` lands at **90.1% R@5** — within 0.5pp of the full-text upper bound at ~10× smaller representation.
+Reproducible retrieval benchmark on LongMemEval-S in [benchmarks/longmemeval/](benchmarks/longmemeval/). Five extractors (content / summary / firstmsg / closets / haiku) × eight rankers (BM25, single-vector embed, multi-vector pools, RRF fusions, ensemble) × 500 questions × six question categories, with paired-bootstrap confidence intervals via `compare.py`. Free, deterministic, runs in 3-5 minutes for the headline. The headline strategy `closets:emax` lands at **90.1% R@5**, within 0.5pp of the full-text upper bound at ~10× smaller representation.
 
 ## Contributing
 

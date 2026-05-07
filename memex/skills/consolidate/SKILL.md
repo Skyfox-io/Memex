@@ -14,7 +14,7 @@ disable-model-invocation: true
 
 **Wikilink rule:** When referencing any file in markdown, always use `[[filename]]` wikilink format.
 
-Independent drift sweep that session-end deliberately doesn't do. Three phases run in order: dedup, contradictions, orphans. Read-only by default; `--fix` only applies safe annotations.
+Independent drift sweep that session-end deliberately doesn't do. Four phases run in order: dedup, contradictions, orphans, decisions compression. Read-only by default; `--fix` only applies safe annotations.
 
 ---
 
@@ -22,7 +22,7 @@ Independent drift sweep that session-end deliberately doesn't do. Three phases r
 
 Run `WORKSPACE_ROOT=$(pwd) && echo "$WORKSPACE_ROOT"` via Bash. Confirm `_MANIFEST.md` exists; if not, tell the user to run `/memex:init` and stop.
 
-Acquire `memory/.consolidate.lock` and check the 24-hour cooldown in `memory/.consolidate-runs.log`. Both follow the shared bulk-write convention — see [`references/locking.md`](references/locking.md).
+Acquire `memory/.consolidate.lock` and check the 24-hour cooldown in `memory/.consolidate-runs.log`. Both follow the shared bulk-write convention. See [`references/locking.md`](references/locking.md).
 
 ---
 
@@ -36,7 +36,7 @@ Detect candidate duplicate files:
    - Top wikilinks (the 5 most frequent `[[targets]]` cited inside) overlap by ≥ 80%.
 3. For each group of ≥ 2 candidates, list: file path, file size, last-modified date, one-line summary of subject overlap.
 
-**Output but do not auto-merge.** Dedup is user-confirmed always — `--fix` does not auto-merge files.
+**Output but do not auto-merge.** Dedup is user-confirmed always. `--fix` does not auto-merge files.
 
 ---
 
@@ -49,7 +49,7 @@ For each contradiction:
 - Show the pair, all conflicting fact IDs, and objects.
 - Suggest: `Run /memex:facts supersede <id> '<correct value>'`.
 
-**With `--fix`:** if a contradiction has only two facts and one is clearly older (by `valid_from`), supersede the older one automatically and log the change. Otherwise, leave for user resolution.
+**With `--fix`:** If a contradiction has only two facts and one is clearly older (by `valid_from`), supersede the older one automatically and log the change. Otherwise, leave for user resolution.
 
 ---
 
@@ -59,33 +59,76 @@ Three sub-checks.
 
 ### 3a. Wikilink dangling
 
-Run `verify-wikilinks.py` (path resolution as in [session-end](../session-end/SKILL.md) Step 8a). Report broken wikilinks. With `--fix`, do nothing — broken wikilinks need user judgment.
+Run `verify-wikilinks.py` (path resolution as in [session-end](../session-end/SKILL.md) Step 8a). Report broken wikilinks. With `--fix`, do nothing. Broken wikilinks need user judgment.
 
-### 3b. Frontmatter dangling
+### 3b. Frontmatter dangling and graph refresh
 
-Run `extract-graph.py --check` (path resolution as in session-end Step 8b). Report typed edges pointing to missing files.
+Resolve `extract-graph.py` (`${CLAUDE_PLUGIN_ROOT}/scripts/extract-graph.py` → `${CLAUDE_SKILL_DIR}/../../scripts/extract-graph.py`).
+
+First run with `--check` to surface dangling edges (typed references to missing files). Report each.
+
+Then run without `--check` to rewrite `memory/.graph.md` with the current graph state. Consolidate is the regular refresh point for the graph (along with `/memex:reindex`); session-end no longer does this.
+
+Skip both if the script is unresolvable. Typed edges are opt-in.
 
 ### 3c. Hub orphans
 
 For each domain in the Hub Map: list `.md` files on disk that aren't in the hub's table (excluding the hub index itself, `_CLOSETS.md`, and `_CLOSETS-archive.md`). These are files dropped in the folder without being wired up.
 
-With `--fix`, propose adding them to the hub. Don't auto-add — wikilink summaries need user/agent judgment.
+With `--fix`, propose adding them to the hub. Don't auto-add. Wikilink summaries need user/agent judgment.
 
 ---
 
-## Step 4: Record the run
+## Step 4: Decisions compression
+
+Read `decisions.md`. If it has fewer than 60 lines, skip this phase entirely (no pressure on the 100-line cap).
+
+Otherwise, scan the file for compression candidates by these concrete rules:
+
+### 4a. Drop redundant supersession pairs
+
+For each `~~strikethrough~~` entry annotated `(superseded YYYY-MM-DD)`, check whether the superseding entry exists later in the file and stands on its own. If yes, the strikethrough entry is now redundant detail.
+
+**With `--fix`:** Replace the original verbose strikethrough entry plus its superseder with a single one-line summary:
+```
+**YYYY-MM-DD** - <new fact>; replaces <old fact> (was <YYYY-MM-DD>)
+```
+Without `--fix`: list the candidate pairs and the proposed merged form.
+
+### 4b. Collapse same-period clusters
+
+Group consecutive entries by ISO week (Monday-Sunday). For each week with ≥3 entries about overlapping topics (≥50% subject overlap based on noun matches in the entry text), the cluster is a candidate.
+
+**With `--fix`:** Combine into one entry with sub-bullets, preserving every unique fact:
+```
+**YYYY-MM-DD–YYYY-MM-DD** - [topic]
+  - <fact 1 verbatim>
+  - <fact 2 verbatim>
+  - <fact 3 verbatim>
+```
+Without `--fix`: list candidate clusters and proposed combined form.
+
+### 4c. Compression bounds
+
+Compression preserves every unique fact. If two entries say the same thing differently, keep the clearer one verbatim. If they say different things, keep both as sub-bullets. Never paraphrase. Never drop a fact because it "feels redundant" — the test is "would re-reading this in 6 months recover the same retrieval signal?"
+
+If `decisions.md` is at or above 95 lines and `--fix` is not set, surface a hard warning in the report: "decisions.md at <N> lines; approaching 100-line cap. Run /memex:consolidate --fix to compress."
+
+---
+
+## Step 5: Record the run
 
 Append to `memory/.consolidate-runs.log` (format in [`references/locking.md`](references/locking.md)):
 
 ```
-YYYY-MM-DDTHH:MM:SS  dedup=<N> contradictions=<M> orphans=<K>  status=<ok|partial>
+YYYY-MM-DDTHH:MM:SS  dedup=<N> contradictions=<M> orphans=<K> decisions-compressed=<D>  status=<ok|partial>
 ```
 
 Clear `memory/.consolidate.lock`.
 
 ---
 
-## Step 5: Output report
+## Step 6: Output report
 
 ```
 Memex Consolidation Report
@@ -103,6 +146,12 @@ ORPHANS: [PASS / N files]
   Hub orphans: [path - "fits domain X" if known]
   [...]
 
+DECISIONS COMPRESSION: [PASS / N candidates / N applied]
+  decisions.md: [N] lines
+  Supersession pairs: [count]
+  Same-period clusters: [count]
+  [...]
+
 Last run: [from .consolidate-runs.log]
 ```
 
@@ -112,8 +161,10 @@ End with: `Run /memex:lint for the per-check live report at any time.`
 
 ## Gotchas
 
-- The lock is best-effort. A killed process leaves it stale. Stale locks (over 30 min old) are treated as freed — see [`references/locking.md`](references/locking.md).
+- The lock is best-effort. A killed process leaves it stale. Stale locks (over 30 min old) are treated as freed. See [`references/locking.md`](references/locking.md).
 - `--fix` only auto-supersedes contradictions where one fact is clearly older by `valid_from`. Anything ambiguous waits for the user.
 - Dedup never auto-merges. `--fix` is for safe annotations only.
-- Consolidate is the dedup/contradiction/orphan owner; session-end stays lean by deferring this work here. Run consolidate on its own cadence, not as a session-end appendage.
+- **Decisions compression preserves every unique fact.** Never paraphrase; never drop a fact because it feels redundant. The test is whether re-reading the compressed log in 6 months still recovers the original retrieval signal. Verbatim user-stated facts ("allergic to coffee", "raised $42K") stay verbatim.
+- **Decisions compression is the only place this happens.** Session-end no longer compresses decisions — it only appends. This skill is the compression owner; run it when `decisions.md` approaches the 100-line cap.
+- Consolidate is the dedup/contradiction/orphan/decisions-compression owner; session-end stays lean by deferring this work here. Run consolidate on its own cadence, not as a session-end appendage.
 - For closets coverage gaps, run `/memex:reindex`. For summary format upgrades, run `/memex:resummarize`. Consolidate doesn't rebuild closets or summaries.

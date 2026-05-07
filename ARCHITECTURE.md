@@ -42,7 +42,7 @@ dates:    <YYYY-MM-DD mentions, even relative dates resolved to absolute>
 status:   active | archived | superseded
 ```
 
-This is the moat. A question like "what about Mike?" matches `people:`; "when did I switch to Linear?" matches `decisions:` + `dates:`; "what did I tell you about my allergies?" matches `claims:`. Each typed field is independently retrievable by an LLM's attention. On [LongMemEval-S](https://huggingface.co/datasets/xiaowu0162/longmemeval), this representation hits **90.1% R@5** — within 0.5pp of indexing the full raw transcript, at roughly 1/10th the size.
+This is the moat. A question like "what about Mike?" matches `people:`; "when did I switch to Linear?" matches `decisions:` + `dates:`; "what did I tell you about my allergies?" matches `claims:`. Each typed field is independently retrievable by an LLM's attention. On [LongMemEval-S](https://github.com/xiaowu0162/LongMemEval), this representation hits **90.1% R@5**, within 0.5pp of indexing the full raw transcript, at roughly 1/10th the size.
 
 Pagination engages at 30 entries: the most-recently-modified files stay in `_CLOSETS.md`; older entries spill to a sibling `_CLOSETS-archive.md` that session-start does **not** load eagerly. The archive is the fallback when the primary closets file lacks a match for the user's question.
 
@@ -58,7 +58,7 @@ Some facts have a clock attached: where Alice works *now* vs *in 2024*; the spri
 
 The DB is regenerable. `memory/facts.md` is the human-readable mirror, committed to git. `facts.py rebuild` wipes the DB and reloads from the mirror. If the two drift, the mirror wins.
 
-Surface: [`/memex:facts`](memex/skills/facts/SKILL.md) skill (explicit-invocation only — autonomous DB writes from model inference would silently insert false facts). Read-side queries flow through the skill or via [`/memex:cross-search`](memex/skills/cross-search/SKILL.md) for cross-workspace lookups.
+Surface: [`/memex:facts`](memex/skills/facts/SKILL.md) skill (explicit-invocation only. Autonomous DB writes from model inference would silently insert false facts). Read-side queries flow through the skill or via [`/memex:cross-search`](memex/skills/cross-search/SKILL.md) for cross-workspace lookups.
 
 ---
 
@@ -66,7 +66,7 @@ Surface: [`/memex:facts`](memex/skills/facts/SKILL.md) skill (explicit-invocatio
 
 Optional YAML frontmatter on any file (`supersedes`, `superseded-by`, `blocks`, `blocked-by`, `people`, `projects`, `type`, `status`, `date`) is parsed at session-end into `memory/.graph.md`. Pure regex; zero LLM calls; files without frontmatter contribute nothing.
 
-The graph is purely additive — opt in by adding frontmatter to any file, opt out by removing it. Lint surfaces dangling typed edges (a file references `supersedes: [[old-decision]]` but `old-decision.md` doesn't exist).
+The graph is purely additive. Opt in by adding frontmatter to any file, opt out by removing it. Lint surfaces dangling typed edges (a file references `supersedes: [[old-decision]]` but `old-decision.md` doesn't exist).
 
 Schema: see [CONTRIBUTING.md](CONTRIBUTING.md#frontmatter-schema). Extractor: `memex/scripts/extract-graph.py`.
 
@@ -78,7 +78,7 @@ Multiple Memex workspaces (nonprofit / personal / work) each have their own file
 
 Mechanism: `~/.memex/sources.md` is a per-user global registry of `(name, path, registered, searchable)` rows. `/memex:link-workspace` adds the current workspace; `/memex:unlink-workspace` removes it; `/memex:cross-search` greps every registered source's manifest + closets and queries each `memory/.facts.db` read-only. Privacy: each source has a `searchable: true|false` flag for total per-source opt-out.
 
-This federation is opt-in per source and read-only across the boundary. No syncing, no auth, no shared state — just grep + SQL across files the user has explicitly registered.
+This federation is opt-in per source and read-only across the boundary. No syncing, no auth, no shared state, just grep + SQL across files the user has explicitly registered.
 
 ---
 
@@ -191,7 +191,7 @@ Executes without asking permission between steps:
 
 ## Skill Architecture
 
-Memex is a Claude Cowork plugin with 17 skills, split by autonomous-invocation policy:
+Memex is a Claude Cowork plugin with 18 skills, split by autonomous-invocation policy:
 
 **Autonomous (model can trigger from a description match):**
 
@@ -204,25 +204,26 @@ Memex is a Claude Cowork plugin with 17 skills, split by autonomous-invocation p
 | `lint` | Audit workspace structural health (read-only by default) |
 | `cross-search` | Read-only grep + facts.db query across linked workspaces |
 
-**Explicit-only (`disable-model-invocation: true` — user must type the slash command):**
+**Explicit-only (`disable-model-invocation: true`. User must type the slash command):**
 
 | Skill | Purpose |
 |-------|---------|
 | `init` | Set up, adopt, or health-check a workspace |
-| `upgrade` | One-command v1→v2 (or future-version) migration orchestrator |
-| `add-domain` | Create a new domain folder with hub index + closets file |
+| `upgrade` | One-command migration orchestrator (v1→v2, v2.0→v2.1, future versions) |
+| `add-domain` | Create a new domain folder with closets (hub index optional) |
 | `archive` | Move a file from Tier 2 to Tier 3 |
 | `wikilinks` | Verify and bulk-convert plain text references to `[[wikilinks]]` |
 | `resummarize` | Refresh manifest + hub summaries to current retrieval-tuned format |
-| `reindex` | Backfill or rebuild every hub's `_CLOSETS.md` |
-| `consolidate` | Independent dedup + contradiction sweep + orphan check |
+| `reindex` | Backfill or rebuild every hub's `_CLOSETS.md` (and `memory/_CLOSETS.md`) |
+| `consolidate` | Independent dedup + contradiction sweep + orphan check + decisions compression |
+| `search` | Cross-hub search within the current workspace |
 | `facts` | Query, write, supersede, or reconcile temporal facts in the SQLite sidecar |
 | `link-workspace` | Register the current workspace in the global source registry |
 | `unlink-workspace` | Deregister a workspace from the global source registry |
 
 Skills are namespaced under `memex:`. Hooks fire `session-start` and `session-end` automatically (configured in `memex/hooks/hooks.json`). CLAUDE.md contains three lines: session-start invocation, session-end invocation, and the wikilink format rule. All logic lives in the skills.
 
-Bulk-write skills (`consolidate`, `reindex`, `resummarize`, `upgrade`) share a locking convention — see [`memex/skills/consolidate/references/locking.md`](memex/skills/consolidate/references/locking.md).
+Bulk-write skills (`consolidate`, `reindex`, `resummarize`, `upgrade`) share a locking convention. See [`memex/skills/consolidate/references/locking.md`](memex/skills/consolidate/references/locking.md).
 
 ---
 
@@ -231,14 +232,14 @@ Bulk-write skills (`consolidate`, `reindex`, `resummarize`, `upgrade`) share a l
 Skills that handle multiple independent paths use `references/` sub-files to keep the main SKILL.md focused. Claude reads the main file first, then loads references only when the current path requires them.
 
 Currently used by:
-- `init` — `references/scan-and-organize.md`, `references/health-check.md`, `references/migrations.md`, `references/post-setup-message.md` (init has four genuinely separable flows)
-- `session-end` — `references/closets-format.md` and `references/summary-rules.md` (canonical specs cited by many other skills)
-- `consolidate` — `references/locking.md` (genuinely shared by 4 bulk-write skills)
-- `cross-search` — `references/registry.md` (shared with link-workspace and unlink-workspace)
-- `facts` — `references/cli.md` (exhaustive subcommand surface)
-- `upgrade` — `references/v1-to-v2.md` (version-specific migration playbook; future versions add their own)
+- `init`. `references/scan-and-organize.md`, `references/health-check.md`, `references/migrations.md`, `references/post-setup-message.md` (init has four genuinely separable flows)
+- `session-end`. `references/closets-format.md` and `references/summary-rules.md` (canonical specs cited by many other skills)
+- `consolidate`. `references/locking.md` (genuinely shared by 4 bulk-write skills)
+- `cross-search`. `references/registry.md` (shared with link-workspace and unlink-workspace)
+- `facts`. `references/cli.md` (exhaustive subcommand surface)
+- `upgrade`. `references/v1-to-v2.md` (version-specific migration playbook; future versions add their own)
 
-Linear skills that run every step every time (`session-start`, `update`, `idea`, `archive`, `add-domain`, `link-workspace`, `unlink-workspace`, `lint`, `wikilinks`, `reindex`, `resummarize`) stay as single SKILL.md files. The cohesion pass at v2.0.0 specifically inlined `lint/references/checks.md` and `consolidate/references/phases.md` because the references *were* the skill — that's an upside-down split, not progressive disclosure.
+Linear skills that run every step every time (`session-start`, `update`, `idea`, `archive`, `add-domain`, `link-workspace`, `unlink-workspace`, `lint`, `wikilinks`, `reindex`, `resummarize`) stay as single SKILL.md files. The cohesion pass at v2.0.0 specifically inlined `lint/references/checks.md` and `consolidate/references/phases.md` because the references *were* the skill. That's an upside-down split, not progressive disclosure.
 
 ---
 
@@ -246,17 +247,16 @@ Linear skills that run every step every time (`session-start`, `update`, `idea`,
 
 `$CLAUDE_PLUGIN_DATA` is a stable per-plugin directory that survives skill upgrades. Memex uses it for operational data that isn't workspace content:
 
-- `session-closes.log` — appended by session-end to track clean closes
+- `session-closes.log`. Appended by session-end to track clean closes
 
 This data is best-effort. Skills that write to it skip silently if the variable isn't set. Skills that read from it treat missing data as absent, not as an error.
 
 Workspace-local operational state lives under `memory/` instead:
 
-- `memory/.session.lock` — written by session-start, cleared by session-end on clean close. Crash recovery uses the timestamp.
-- `memory/.{consolidate,reindex,resummarize,upgrade}.lock` — bulk-write locks, 30-minute staleness rule (see [`memex/skills/consolidate/references/locking.md`](memex/skills/consolidate/references/locking.md)).
-- `memory/.{consolidate,reindex,resummarize,upgrade}-runs.log` — append-only run logs; session-end reads `.consolidate-runs.log` to nag about cadence.
-- `memory/.facts.db` — SQLite temporal facts (regenerable from `memory/facts.md`).
-- `memory/.graph.md` — typed-edge graph (regenerable from frontmatter via `extract-graph.py`).
+- `memory/.{consolidate,reindex,resummarize,upgrade}.lock`. Bulk-write locks, 30-minute staleness rule (see [`memex/skills/consolidate/references/locking.md`](memex/skills/consolidate/references/locking.md)). These guard genuine multi-minute write operations; there is no session-level lock (session-end is idempotent and runs unconditionally).
+- `memory/.{consolidate,reindex,resummarize,upgrade}-runs.log`. Append-only run logs; session-end reads `.consolidate-runs.log` to nag about cadence.
+- `memory/.facts.db`. SQLite temporal facts (regenerable from `memory/facts.md`).
+- `memory/.graph.md`. Typed-edge graph (regenerable from frontmatter via `extract-graph.py`). Refreshed lazily by `/memex:reindex` and `/memex:consolidate`, not at session-end.
 
 ---
 
@@ -270,10 +270,10 @@ Gotchas are the highest-signal content for improving skill reliability over time
 
 ## Intentional Non-Features
 
-- **No primary database.** Markdown is the source of truth. The `memory/.facts.db` SQLite sidecar exists only to make temporal queries fast — it's regenerable from the markdown mirror at `memory/facts.md`.
+- **No primary database.** Markdown is the source of truth. The `memory/.facts.db` SQLite sidecar exists only to make temporal queries fast. It's regenerable from the markdown mirror at `memory/facts.md`.
 - **No MCP server.** No running process needed.
 - **No learned vector index.** No FAISS, no HNSW, no embedding store at runtime. The closets typed-field index handles relevance.
-- **No automatic cross-workspace sync.** Federation is opt-in per source and read-only across the boundary — `/memex:cross-search` greps registered workspaces, never writes.
+- **No automatic cross-workspace sync.** Federation is opt-in per source and read-only across the boundary. `/memex:cross-search` greps registered workspaces, never writes.
 - **No GUI.** The visual layer is [Obsidian](https://obsidian.md/).
 - **No automatic archival.** Session-end surfaces candidates at milestones. The user decides.
 - **No autonomous DB writes.** `/memex:facts` is gated behind explicit invocation; the model can't silently insert false facts on inference.

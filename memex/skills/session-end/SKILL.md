@@ -3,19 +3,22 @@ name: session-end
 description: >
   Use when closing a Memex session: at the SessionEnd hook, when a session is about to
   time out, when the hook didn't fire, or to force a clean checkpoint before a long break.
-  Updates status.md, appends session-log entry, refreshes hub summaries and per-hub
-  `_CLOSETS.md`, verifies wikilinks, refreshes typed-edge graph, clears the session lock.
+  Updates status.md, appends session-log entry, refreshes hub summaries and touched
+  `_CLOSETS.md` entries, verifies wikilinks, scopes a wikilink suggest pass to files
+  modified this session.
 ---
 
 # Memex - Session End
 
-**Wikilink rule:** when referencing files in any markdown you write, use `[[filename]]` format. Plain-text filenames break Obsidian graph connectivity.
+**Wikilink rule:** When referencing files in any markdown you write, use `[[filename]]` format. Plain-text filenames break Obsidian graph connectivity.
 
-Leave the workspace in a clean, fully updated state so the next session starts with perfect context. Work through each step in order. Don't skip steps. Don't ask for permission between steps — execute everything and report at the end.
+Leave the workspace in a clean state so the next session starts with current context. Work through each step in order. Don't skip steps. Don't ask for permission between steps. Execute everything and report at the end.
+
+Session-end does work that's *proportional to the session* — touched files, modified hubs, new decisions. Workspace-wide maintenance (typed-edge graph rebuild, deep dedup, contradiction sweep, decisions compression) lives in `/memex:reindex` and `/memex:consolidate` and runs on its own cadence.
 
 ---
 
-## Step 1: Detect workspace, resolve paths, take session lock
+## Step 1: Detect workspace and resolve paths
 
 Run `WORKSPACE_ROOT=$(pwd) && echo "$WORKSPACE_ROOT"` via Bash.
 
@@ -27,15 +30,7 @@ If it exists, resolve file paths via this chain (first match wins):
 2. Convention (`memory/status.md`, `memory/session-log.md`, `memory/decisions.md`, `scratch/ideas.md` or `ideas.md`)
 3. Search by name
 
-### Session lock
-
-Check `memory/.session.lock` (created by session-start, cleared by session-end on clean close):
-
-- **Lock present, matches active session:** proceed.
-- **Lock present, timestamp ≥ 24 hours old:** previous session likely crashed. Continue, but flag in the close report: "Previous session lock was stale (created [timestamp]). Drift may have accumulated. Consider running `/memex:lint` after this close."
-- **Lock missing:** session-start was skipped or interrupted. Continue with the same flag.
-
-Step 10 clears the lock after a successful close.
+There is no session lock. Session-end is unconditional and idempotent.
 
 ---
 
@@ -49,10 +44,10 @@ Before touching files, write a brief internal summary: files created/modified/mo
 
 - Update "Last updated" date to today
 - Remove completed items from "What's In Progress"
-- Update "What's Blocked" — resolve unblocked items, add new blockers
+- Update "What's Blocked". Resolve unblocked items, add new blockers
 - Update "Next Priorities" to reflect what actually comes next
 
-**Idempotency check:** before writing, compute the new content. Strip the "Last updated" line from both old and new, hash both. If hashes match (substance unchanged), skip the write entirely — including the date. This prevents "session-end ran twice" from compounding drift via spurious timestamp churn.
+**Idempotency check:** Before writing, compute the new content. Strip the "Last updated" line from both old and new, hash both. If hashes match (substance unchanged), skip the write entirely, including the date. This prevents "session-end ran twice" from compounding drift via spurious timestamp churn.
 
 ---
 
@@ -87,19 +82,21 @@ If the log has more than 10 entries, archive the oldest:
 
 Only update hubs for domains actually touched this session.
 
-Read the Hub Map to identify each domain's hub. Also scan touched folders for any `*-index.md` file — this catches hubs created informally (without `/memex:add-domain`).
+Read the Hub Map to identify each domain's hub. Also scan touched folders for any `*-index.md` file. This catches hubs created informally (without `/memex:add-domain`).
 
-### 5a. Hub-table entries
+### 5a. Hub-table entries (legacy hubs only)
 
-For each touched hub:
+For each touched hub that has a prose `[domain]-index.md` file with a file table, update the table:
 
 - Add new files with `[[filename]]` wikilinks, a retrieval-tuned summary, and status.
 - Update the status of existing entries.
 - Every file in a hub table must have a `[[wikilink]]`.
 
-Also update the one-line summaries in `_MANIFEST.md` if the content of any Tier 1 or Tier 2 file changed meaningfully.
+For **closets-only hubs** (v2.1+ default), skip the hub-table step entirely. Closets are the source of truth; new files land in `_CLOSETS.md` via Step 5c.
 
-**Summary rules** — see [`references/summary-rules.md`](references/summary-rules.md) for the 8 retrieval-tuned rules, examples, and self-check. The rules govern hub summaries, manifest summaries, and every typed field in `_CLOSETS.md`. Summary content is benchmark-validated (90.1% R@5 on LongMemEval-S) — do not paraphrase rule meanings.
+Always update the one-line summaries in `_MANIFEST.md` if the content of any Tier 1 or Tier 2 file changed meaningfully.
+
+**Summary rules.** See [`references/summary-rules.md`](references/summary-rules.md) for the 8 retrieval-tuned rules, examples, and self-check. The rules govern hub summaries, manifest summaries, and every typed field in `_CLOSETS.md`. Summary content is benchmark-validated (90.1% R@5 on LongMemEval-S). Do not paraphrase rule meanings.
 
 ### 5b. Status sections in touched domain files
 
@@ -111,11 +108,17 @@ Only check files actually touched; do not scan the full workspace.
 
 For each touched hub, refresh the per-hub `_CLOSETS.md` (sibling of the hub index, e.g., `programs/_CLOSETS.md`). This is the typed-field index future sessions scan to decide which files to open without reading them all.
 
-**Format, field semantics, pagination policy (30-entry cap), and read-side fallback** — see [`references/closets-format.md`](references/closets-format.md). Read it before touching closets files unless you've already read it this session.
+**Format, field semantics, pagination policy (30-entry cap), and read-side fallback.** See [`references/closets-format.md`](references/closets-format.md). Read it before touching closets files unless you've already read it this session.
 
 Quick rules: one `## [[stem]]` heading per file; `subjects`/`people`/`claims`/`decisions`/`dates`/`status` lines (omit empty ones); cap each entry at ~1500 chars; only refresh entries for files touched this session; create the file if it doesn't exist for a touched hub.
 
-After refreshing, if `_CLOSETS.md` would exceed 30 entries, follow the pagination policy in the reference.
+After refreshing, if `_CLOSETS.md` would exceed 30 entries, follow the pagination policy in the reference (including the Recently Archived section in the primary file).
+
+### 5d. Refresh `memory/_CLOSETS.md`
+
+If any Tier 1 file (`status.md`, `session-log.md`, `decisions.md`, `glossary.md`, plus any user-added Tier 1 entries like `contacts.md`) was touched this session, refresh its entry in `memory/_CLOSETS.md`. Same format as hub closets. No pagination — Tier 1 is a small fixed set.
+
+If `memory/_CLOSETS.md` doesn't exist on a 2.1.x+ workspace, create it from `memory-closets.md.tmpl` and seed entries for every Tier 1 file in the manifest.
 
 ### Self-check
 
@@ -127,10 +130,10 @@ Re-read each summary written or updated this session. For each: *if the user ask
 
 Scan the workspace for files and folders not listed in any hub or the manifest. Briefly read content to understand each.
 
-- **Folders with 3+ markdown files not in the Hub Map:** likely domains. Note folder name, file count, what files appear to be about (based on content, not just filenames).
-- **Loose project files not in any hub:** files at workspace root or in untracked folders that look like project documents. Note which existing domain they'd fit, or if they suggest a new domain.
+- **Folders with 3+ markdown files not in the Hub Map:** Likely domains. Note folder name, file count, what files appear to be about (based on content, not just filenames).
+- **Loose project files not in any hub:** Files at workspace root or in untracked folders that look like project documents. Note which existing domain they'd fit, or if they suggest a new domain.
 
-Build a list for the close-report block. Keep this fast — session-end *surfaces* untracked content; deep dedup and contradiction sweeps are `/memex:consolidate`'s job.
+Build a list for the close-report block. Keep this fast. Session-end *surfaces* untracked content; deep dedup and contradiction sweeps are `/memex:consolidate`'s job.
 
 ---
 
@@ -142,11 +145,13 @@ If this session produced meaningful decisions, append to `decisions.md`:
 **YYYY-MM-DD** - [decision stated as a fact, one sentence]
 ```
 
-If `decisions.md` is approaching 100 lines, compress related entries from the same time period into summary entries. Don't just truncate. Keep the file under 100 lines. Skip this step if no decisions were made.
+Append-only. Session-end does **not** compress. If after appending `decisions.md` is at or above 95 lines, surface a one-line nudge in the close report: "decisions.md at <N> lines; run `/memex:consolidate --fix` to compress." Do not block close on it.
+
+Skip this step if no decisions were made.
 
 ---
 
-## Step 8: Verify wikilinks and refresh typed-edge graph
+## Step 8: Verify wikilinks (broken + scoped suggest)
 
 ### 8a. Wikilink integrity
 
@@ -161,28 +166,38 @@ If the script can't be found, report "Wikilink script not found - skipping." Do 
 
 If broken links are found, fix them. Target is always zero.
 
-### 8b. Typed-edge graph
+### 8b. Wikilink suggest (scoped to this session)
 
-If any file with YAML frontmatter was created or modified this session, refresh the graph:
+If any markdown files were created or modified this session (from Step 2's internal summary), run a scoped suggest pass to catch new plain-text references that should be wikilinks:
 
-1. Resolve `${CLAUDE_PLUGIN_ROOT}/scripts/extract-graph.py` (or the `${CLAUDE_SKILL_DIR}/../../scripts/extract-graph.py` fallback).
-2. Run with the workspace path. It writes `memory/.graph.md`.
-3. The script reports dangling edges (typed references to nonexistent files). List them in the close report so the user can resolve.
+```
+python3 [verify-wikilinks-script] "$WORKSPACE_ROOT" --suggest --files <file1> <file2> ... --skip .claude .obsidian .git
+```
 
-If no frontmatter-bearing files were touched, skip 8b — the graph is unchanged.
+If the suggest pass returns hits, surface them in the close report. Apply automatically only for unambiguous matches (the suggested wikilink stem and the plain-text match are an exact case-fold match for an existing file). For any ambiguous hits (short stems, multiple candidate targets), list them and let the user route.
 
-The graph is purely additive; files without frontmatter contribute no edges. See `ARCHITECTURE.md` "Typed Edges" for supported keys.
+If no files were touched, skip 8b.
 
-### 8c. Self-test
+This is the proportional version of `/memex:wikilinks --suggest` (workspace-wide). Run that on demand for periodic full sweeps.
+
+### 8c. Typed-edge graph (deferred)
+
+The typed-edge graph is no longer rebuilt at session-end. It refreshes lazily via `/memex:reindex` and `/memex:consolidate`, which both run `extract-graph.py` against the workspace. If a frontmatter-bearing file was touched this session and dangling edges matter, mention it in the close report:
+
+> `frontmatter touched this session — run /memex:consolidate or /memex:reindex to refresh memory/.graph.md`
+
+This is informational. Don't block close on it.
+
+### 8d. Self-test
 
 Verify each prior step's output landed:
 
-- `status.md` — "Last updated" is today (or unchanged if Step 3 was idempotent-skipped).
-- `session-log.md` — new entry at top with today's date.
-- Hub files for touched domains — list every file added or modified.
-- `_CLOSETS.md` for touched hubs — entry for every file touched.
-- `_MANIFEST.md` — summary-format-version marker still says `:2`.
-- Wikilink check — exited with status 0 (CLEAN).
+- `status.md`. "Last updated" is today (or unchanged if Step 3 was idempotent-skipped).
+- `session-log.md`. New entry at top with today's date.
+- Hub files for touched domains (legacy hubs only). List every file added or modified.
+- `_CLOSETS.md` for touched hubs and `memory/_CLOSETS.md` for touched Tier 1 files. Entry for every file touched.
+- `_MANIFEST.md`. Summary-format-version marker still says `:2`.
+- Wikilink check. Exited with status 0 (CLEAN).
 
 If any check fails, surface in Step 9 as `[INCOMPLETE]` next to the failed step. Drift is louder than silence.
 
@@ -236,7 +251,7 @@ Informational. Session is closed. Do not block on a response.
 
 ---
 
-## Step 10: Write session marker and clear lock
+## Step 10: Write session-close marker
 
 If `$CLAUDE_PLUGIN_DATA` is set and the directory exists, append to `$CLAUDE_PLUGIN_DATA/session-closes.log`:
 
@@ -244,9 +259,7 @@ If `$CLAUDE_PLUGIN_DATA` is set and the directory exists, append to `$CLAUDE_PLU
 YYYY-MM-DDTHH:MM:SS  workspace-root-basename  clean
 ```
 
-Then remove `memory/.session.lock` if it exists. This signals to the next session-start that this session closed cleanly.
-
-If `$CLAUDE_PLUGIN_DATA` isn't set, skip the marker but still clear the lock. Both are best-effort and never block close.
+Best-effort; never blocks close. There's no lock to clear — session-start/session-end are stateless.
 
 ---
 
@@ -260,10 +273,12 @@ If `$CLAUDE_PLUGIN_DATA` isn't set, skip the marker but still clear the lock. Bo
 
 ## Gotchas
 
-- **Session-end is the most common victim of session timeouts.** If it dies mid-execution, partial updates may have been written. Session-start's staleness warning catches this case — but if you suspect drift, run `/memex:lint`.
+- **Session-end is the most common victim of session timeouts.** If it dies mid-execution, partial updates may have been written. Session-start detects this by comparing `status.md` mtime to the most recent workspace mtime (no lock file involved). If you suspect drift, run `/memex:lint`.
+- **There is no session lock.** v2.1+ removed `memory/.session.lock` entirely. Session-end runs unconditionally and is fully idempotent (Step 3 hashes substance to skip no-op writes). Bulk-write skills (`/memex:reindex`, `/memex:consolidate`, `/memex:resummarize`, `/memex:upgrade`) keep their own locks for actual concurrency reasons.
+- **Typed-edge graph is rebuilt by reindex/consolidate, not session-end.** If a frontmatter-bearing file changed this session, the close report nudges to run one of those skills. The graph is purely additive and regenerable; a one-session lag has no retrieval impact.
 - **Idempotency is intentional** (Step 3). If your run produces a no-op status.md write, that's correct, not a bug. Don't "fix" it by forcing a date refresh.
 - **The 30-entry closets cap is a hard load-time budget**, not a soft preference. Do not let `_CLOSETS.md` grow past 30; route overflow to `_CLOSETS-archive.md` per the pagination policy in [`references/closets-format.md`](references/closets-format.md).
 - **Hub files created informally** (user manually creates `research/research-index.md` instead of using `/memex:add-domain`) are detected in Step 5 by scanning for `*-index.md` files in *touched* folders. Hubs in untouched folders won't be found until a future session touches that domain.
-- **Decisions.md compression** (Step 7): merge entries from the same time period that cover the same topic. Don't truncate — that loses retrieval signal.
+- **Decisions.md is append-only at session-end.** Compression lives in `/memex:consolidate`. If the file is approaching its 100-line cap, the close report nudges; it doesn't compress in-line.
 - **Summary content is benchmark-validated**, not stylistic preference. Summaries that drop verbatim user-stated facts ("allergic to coffee" → "has dietary restrictions") measurably tank R@5. Follow [`references/summary-rules.md`](references/summary-rules.md) literally.
 - **Closets archive is not loaded eagerly.** Session-start only reads `_CLOSETS.md`; the archive is the fallback. Don't move recently active files to the archive; pagination sorts by underlying-file mtime for a reason.

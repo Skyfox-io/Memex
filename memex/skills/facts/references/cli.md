@@ -37,4 +37,4 @@ Conventions, not enforced. Lowercase, underscore-separated:
 
 ## Auto-ingest regex
 
-`ingest` only fires on lines matching `**YYYY-MM-DD** — text` inside `decisions.md`. The fact-extraction regex is `Capitalized Subject (1-3 words) + verb + object` — anything more complex is silently dropped. For high-stakes facts, prefer `add`.
+`ingest` only fires on lines matching `**YYYY-MM-DD.** Text` inside `decisions.md`. The fact-extraction regex is `Capitalized Subject (1-3 words) + verb + object`. Anything more complex is silently dropped. For high-stakes facts, prefer `add`.

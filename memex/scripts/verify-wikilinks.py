@@ -193,6 +193,7 @@ def main():
     workspace = os.getcwd()
     skip_prefixes = [".claude/", ".obsidian/", ".git/"]
     suggest_mode = False
+    files_filter: list[str] = []
 
     # Parse arguments
     i = 0
@@ -209,6 +210,11 @@ def main():
         elif args[i] == "--suggest":
             suggest_mode = True
             i += 1
+        elif args[i] == "--files":
+            i += 1
+            while i < len(args) and not args[i].startswith("-"):
+                files_filter.append(args[i])
+                i += 1
         else:
             workspace = os.path.abspath(args[i])
             i += 1
@@ -221,8 +227,21 @@ def main():
     known_stems, known_paths, stem_to_file = build_known_names(all_files)
 
     if suggest_mode:
+        if files_filter:
+            ws_abs = os.path.abspath(workspace)
+            normalized = set()
+            for f in files_filter:
+                f_abs = os.path.abspath(f) if os.path.isabs(f) else os.path.abspath(os.path.join(ws_abs, f))
+                try:
+                    rel = os.path.relpath(f_abs, ws_abs)
+                except ValueError:
+                    continue
+                normalized.add(rel)
+            scan_files = [f for f in all_files if f in normalized]
+        else:
+            scan_files = all_files
         suggestions = find_missing_wikilinks(
-            workspace, all_files, known_stems, stem_to_file, skip_prefixes
+            workspace, scan_files, known_stems, stem_to_file, skip_prefixes
         )
         if suggestions:
             print(f"PLAIN TEXT REFERENCES ({len(suggestions)} found):")

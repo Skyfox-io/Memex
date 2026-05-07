@@ -2,10 +2,10 @@
 name: unlink-workspace
 description: >
   Trigger when the user wants a Memex workspace removed from the global
-  source registry — e.g., they've archived a project, the workspace
+  source registry; e.g., they've archived a project, the workspace
   moved, or they want to stop a source from showing up in
   `/memex:cross-search` permanently. (For temporary opt-out, prefer
-  `set-searchable false` instead — see Gotchas.)
+  `set-searchable false` instead; see Gotchas.)
 argument-hint: "[source-name]"
 disable-model-invocation: true
 ---
@@ -41,4 +41,4 @@ Workspace files untouched. To re-register: /memex:link-workspace.
 - **Unlink is destructive at the registry layer, not on disk.** The workspace's `_MANIFEST.md`, closets, and facts.db remain. Don't pitch unlink as a "delete".
 - **Prefer `set-searchable false` for temporary hides.** Unlinking discards the registration date and forces a re-link to restore searchability. If the user just wants the source quiet for a while, point them to `python3 <sources.py> set-searchable <name> false`.
 - **No undo.** The registry has no history. Re-linking creates a fresh `registered:` date.
-- **Name is the only key.** If the user has multiple sources at similar paths, confirm by name before removing — the script does not prompt.
+- **Name is the only key.** If the user has multiple sources at similar paths, confirm by name before removing. The script does not prompt.

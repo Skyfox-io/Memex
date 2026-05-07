@@ -9,35 +9,31 @@ description: >
 
 # Memex - Session Start
 
-**Wikilink rule:** when referencing files in any markdown you write, use `[[filename]]` format. Plain-text filenames break Obsidian graph connectivity.
+**Wikilink rule:** When referencing files in any markdown you write, use `[[filename]]` format. Plain-text filenames break Obsidian graph connectivity.
 
 Orient yourself and deliver a tight briefing so the session starts at full speed.
 
-## Step 1: Detect workspace state and check session lock
+## Step 1: Detect workspace state
 
 Run `WORKSPACE_ROOT=$(pwd) && echo "$WORKSPACE_ROOT"` via Bash.
 
 Check if `_MANIFEST.md` exists at the workspace root:
 
-- **No manifest:** tell the user "Memex is installed but not initialized in this workspace. Run `/memex:init` to set up structured memory here." Stop.
-- **Manifest with `<!-- memex-managed:N.N.N -->` marker:** parse the version. If the major version is older than the current Memex VERSION (read `memex/.claude-plugin/plugin.json` if accessible — the v2 baseline is `2.0.0`), this is an outdated workspace. Continue normally, but in Step 6 append a one-line `Memex upgrade available — run /memex:upgrade to migrate to v2 retrieval.` notice. Otherwise, full Memex mode. Continue.
-- **Manifest without marker but with Tier 1/2/3 structure:** compatible mode. Continue. After Step 6's briefing, append: "Running in compatible mode. Run `/memex:init` to enable full features, then `/memex:upgrade` to migrate to v2 retrieval."
+- **No manifest:** Tell the user "Memex is installed but not initialized in this workspace. Run `/memex:init` to set up structured memory here." Stop.
+- **Manifest with `<!-- memex-managed:N.N.N -->` marker:** Parse the version. If the major version is older than the current Memex VERSION (read `memex/.claude-plugin/plugin.json` if accessible. The v2 baseline is `2.0.0`), this is an outdated workspace. Continue normally, but in Step 6 append a one-line `Memex upgrade available. Run /memex:upgrade to migrate to v2 retrieval.` notice. Otherwise, full Memex mode. Continue.
+- **Manifest without marker but with Tier 1/2/3 structure:** Compatible mode. Continue. After Step 6's briefing, append: "Running in compatible mode. Run `/memex:init` to enable full features, then `/memex:upgrade` to migrate to v2 retrieval."
 
-### Crash-recovery check
+### Unclean-close detection (mtime-based)
 
-Read `memory/.session.lock` if it exists.
+There is no session lock. Instead, compare `status.md`'s mtime against the most recent `.md` file mtime anywhere in the workspace (excluding `.git`, `.claude`, `.obsidian`, `memex`, `node_modules`).
 
-- **Lock present, ≤ 24h old:** previous session may have crashed without running session-end. After the briefing, append: "⚠ Previous session may not have closed cleanly (lock at `memory/.session.lock` from [timestamp]). Status and session-log may be drifted — run `/memex:update` to refresh, or `/memex:lint` for a full health check before working."
-- **Lock present, > 24h old:** stale lock from an earlier crash. Same warning, plus "lock is stale; clearing it."
-- **Lock missing:** clean state, no warning.
+If any workspace `.md` file's mtime is more recent than `status.md`'s mtime by more than 5 minutes, the previous session likely modified files without running session-end. After the briefing, append:
 
-Then write a fresh lock:
+> ⚠ Files were modified after the last `status.md` update. The previous session may not have closed cleanly. Run `/memex:update` to refresh status, or describe what's been happening and we'll capture it.
 
-```
-memory/.session.lock contains: 2026-05-04T15:42:18  pid=<pid>  agent=<agent>
-```
+If `status.md` is the most recent (or within 5 minutes of the most recent), the workspace is clean. No warning.
 
-Session-end clears it on clean close.
+This is the only state check. There is no lock file to clear, no "stale lock" semantics, no concurrent-session protection at the session level.
 
 ## Step 2: Scan the manifest
 
@@ -53,12 +49,13 @@ Resolve file paths via this chain (first match wins):
 
 Read these in order:
 
-1. `status.md` — full file. Current priorities and blockers.
-2. `session-log.md` — read from the top, stop after the first `---` separator. That's the most recent entry. Don't read older entries.
-3. `decisions.md` — last 5 entries.
-4. `ideas.md` — skim, note routing destinations.
+1. `status.md`. Full file. Current priorities and blockers.
+2. `session-log.md`. Read from the top, stop after the first `---` separator. That's the most recent entry. Don't read older entries.
+3. `decisions.md`. Last 5 entries.
+4. `ideas.md`. Skim, note routing destinations.
+5. `memory/_CLOSETS.md` if it exists. Typed-field index over Tier 1 files. Use for field-level lookups against status / session-log / decisions / glossary / contacts without re-scanning their full text. Same field semantics as hub closets (subjects / people / claims / decisions / dates / status).
 
-If any file is missing, note briefly and continue. Do not stop.
+If any file is missing, note briefly and continue. Do not stop. If `memory/_CLOSETS.md` is missing on a 2.1.x+ workspace, surface the gap in Step 6 ("memory closets missing — run `/memex:reindex --hub memory`").
 
 After reading status.md, parse "Last updated" and calculate days between that and today. If more than 3 days, flag for the briefing.
 
@@ -66,7 +63,7 @@ After reading status.md, parse "Last updated" and calculate days between that an
 
 If the user's opening message mentions a specific domain, identify the right hub from the manifest summaries.
 
-**Read the hub's `_CLOSETS.md` first** (e.g., `programs/_CLOSETS.md`) — sibling of the hub index. The closets file is a typed-field index that enumerates the distinct subjects, named entities, decisions, and status of every file in the hub, so you can decide which files to actually open without reading each.
+**Read the hub's `_CLOSETS.md` first** (e.g., `programs/_CLOSETS.md`). Sibling of the hub index. The closets file is a typed-field index that enumerates the distinct subjects, named entities, decisions, and status of every file in the hub, so you can decide which files to actually open without reading each.
 
 For the full closets schema, field semantics, and pagination policy, see [`../session-end/references/closets-format.md`](../session-end/references/closets-format.md). Read it once if you haven't this session.
 
@@ -74,11 +71,11 @@ For the full closets schema, field semantics, and pagination policy, see [`../se
 
 Wikilinks in a closets entry tell you a file exists; they do not mean you should open it. Open a file only when the current task requires its full content.
 
-If no `_CLOSETS.md` exists for the hub (workspace pre-dates v2 or hub not yet curated), fall back to reading the hub index file directly. Note the gap — Step 6 surfaces it.
+If no `_CLOSETS.md` exists for the hub (workspace pre-dates v2 or hub not yet curated), fall back to reading the hub index file directly. Note the gap. Step 6 surfaces it.
 
 ### Closets coverage scan
 
-If the workspace has no `<!-- memex-managed` marker (compatible mode predates v2 closets), skip this scan — pre-v2 workspaces don't owe closets coverage.
+If the workspace has no `<!-- memex-managed` marker (compatible mode predates v2 closets), skip this scan. Pre-v2 workspaces don't owe closets coverage.
 
 Otherwise, after loading the active hub, scan every `[[*-index]]` row in the Hub Map and check whether `<hub-folder>/_CLOSETS.md` exists. Count hubs with coverage vs without. If any hub is missing closets, hold the count for the briefing.
 
@@ -86,7 +83,7 @@ Otherwise, after loading the active hub, scan every `[[*-index]]` row in the Hub
 
 `_CLOSETS.md` is capped at 30 entries (most recently modified). Larger hubs spill older entries into a sibling `_CLOSETS-archive.md`, which session-start does **not** load by default.
 
-If you scan `_CLOSETS.md` and find no entry that matches the user's question — but the question still seems to live in this hub — load `<domain>/_CLOSETS-archive.md` (if it exists) and scan it before opening individual files. Same format, same field-level retrieval logic.
+If you scan `_CLOSETS.md` and find no entry that matches the user's question. But the question still seems to live in this hub. Load `<domain>/_CLOSETS-archive.md` (if it exists) and scan it before opening individual files. Same format, same field-level retrieval logic.
 
 Do not load the archive eagerly; only on a primary-closets miss.
 
@@ -154,7 +151,7 @@ After the briefing (and any notices), end with two options:
 → **Update first** - flag what's changed since last session
 ```
 
-If the user picks "update first" (or says anything indicating items have changed), ask what's different, then update `status.md` immediately before proceeding. If they pick "start session" (or just state their task), move on — don't ask again.
+If the user picks "update first" (or says anything indicating items have changed), ask what's different, then update `status.md` immediately before proceeding. If they pick "start session" (or just state their task), move on. Don't ask again.
 
 ## Output rules
 
@@ -167,9 +164,9 @@ If the user picks "update first" (or says anything indicating items have changed
 
 ## Gotchas
 
-- **Sessions that time out or get abandoned don't run session-end**, so status.md and session-log.md may not reflect the last session's work. The staleness warning catches this. If the user sees a warning, suggest "Update first" before diving in.
-- **Session-start reads only the most recent session-log entry** (stops at first `---`). If the file format is corrupted (missing separators), you'll read too much. The session-log format requires `---` after every entry — flag and ask if you encounter a malformed file.
+- **Sessions that time out or get abandoned don't run session-end**, so status.md and session-log.md may not reflect the last session's work. The mtime-based unclean-close check catches this. If the user sees the warning, suggest "Update first" before diving in.
+- **Session-start reads only the most recent session-log entry** (stops at first `---`). If the file format is corrupted (missing separators), you'll read too much. The session-log format requires `---` after every entry. Flag and ask if you encounter a malformed file.
 - **The "Update first" option** lets users correct drift before working. If they pick it, update status.md immediately, then proceed.
-- **Closets are pointers, not load triggers** — same rule as wikilinks. Listing 12 files in `_CLOSETS.md` doesn't mean you read 12 files. Read closets once, decide which 0–2 files the task actually needs, open only those.
+- **Closets are pointers, not load triggers.** Same rule as wikilinks. Listing 12 files in `_CLOSETS.md` doesn't mean you read 12 files. Read closets once, decide which 0–2 files the task actually needs, open only those.
 - **Field-level retrieval beats topic-level retrieval.** When matching the user's question against a closets entry, scan typed fields (`people:`, `claims:`, `decisions:`, `dates:`) before assuming the headline subject covers it. The benchmark win comes from this; ignoring typed fields ignores the moat.
-- **Lock written before failure means lock leaked.** If you write the lock in Step 1 then crash before Step 6 lands cleanly, the next session-start sees a fresh-looking lock. The crash-recovery check catches this only by age — your lock will look "active" until 24h passes. Acceptable trade-off; flagged here for diagnosis.
+- **No session lock.** v2.1+ dropped `memory/.session.lock`. Unclean-close detection uses file mtimes instead. The 5-minute window absorbs minor clock drift; tighter windows produce false positives from manifest writes during session-start itself.

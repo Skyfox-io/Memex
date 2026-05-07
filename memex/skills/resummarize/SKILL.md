@@ -16,8 +16,8 @@ disable-model-invocation: true
 
 Refresh manifest and hub summaries to current retrieval-tuned format. The companion to `/memex:reindex`:
 
-- **Resummarize** — rewrites *summaries* (manifest Hub Map rows, Tier 1 file rows, per-file rows inside each hub).
-- **Reindex** — rebuilds the per-hub `_CLOSETS.md` typed-field index.
+- **Resummarize.** Rewrites *summaries* (manifest Hub Map rows, Tier 1 file rows, per-file rows inside each hub).
+- **Reindex.** Rebuilds the per-hub `_CLOSETS.md` typed-field index.
 
 Run resummarize first on a v1→v2 migration, then reindex. They're independent passes.
 
@@ -27,9 +27,9 @@ Run resummarize first on a v1→v2 migration, then reindex. They're independent 
 
 Run `WORKSPACE_ROOT=$(pwd) && echo "$WORKSPACE_ROOT"` via Bash. Read `_MANIFEST.md`:
 
-- **No `<!-- memex-managed` marker:** tell the user to run `/memex:init` first and stop.
+- **No `<!-- memex-managed` marker:** Tell the user to run `/memex:init` first and stop.
 
-Acquire `memory/.resummarize.lock` and check the 24-hour cooldown in `memory/.resummarize-runs.log`. Both follow the shared bulk-write convention — see `../consolidate/references/locking.md`.
+Acquire `memory/.resummarize.lock` and check the 24-hour cooldown in `memory/.resummarize-runs.log`. Both follow the shared bulk-write convention. See `../consolidate/references/locking.md`.
 
 Look for `<!-- summary-format-version:N -->` in the manifest:
 
@@ -62,7 +62,7 @@ Highlights of the v2 contract (full rules in the reference):
 
 **Example transformation:**
 
-v1 (loses retrieval on specific subjects):
+V1 (loses retrieval on specific subjects):
 > Tracks fundraising activities for spring campaign
 
 v2 (surfaces for "Mike", "the gala", "donor list"):
@@ -84,7 +84,7 @@ If absent, add as the second comment line, immediately under `<!-- memex-managed
 
 ## Step 4: Verify, record the run, and report
 
-Run `verify-wikilinks.py` (path resolution as in [session-end](../session-end/SKILL.md) Step 8) to confirm no links broke during the rewrite.
+Run `verify-wikilinks.py` (path resolution as in [session-end](../session-end/SKILL.md) Step 8a) to confirm no links broke during the rewrite.
 
 Append to `memory/.resummarize-runs.log`:
 
@@ -116,5 +116,5 @@ Run /memex:lint for a full health check, or /memex:reindex to rebuild closets.
 - **Respect the 250-char cap.** On long files, pick the most retrieval-relevant subjects. Recent and named entities beat generic claims.
 - **Resummarize doesn't touch closets.** Run `/memex:reindex` afterward if hub `_CLOSETS.md` files also need to migrate to v2 typed-field format.
 - **Side effect: stale status pruning.** If a touched `status.md` has items clearly completed (no longer in `decisions.md` or recent session-log), prune them while you're there. But this is a side effect, not the main job.
-- **`ideas.md` rule:** the summary lists topics of pending ideas, not "user has ideas about productivity."
+- **`ideas.md` rule:** The summary lists topics of pending ideas, not "user has ideas about productivity."
 - For granular drift detection (orphans, contradictions, dangling links), use `/memex:lint` or `/memex:consolidate`.

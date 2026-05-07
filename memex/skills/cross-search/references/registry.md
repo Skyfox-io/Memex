@@ -1,4 +1,4 @@
-# Memex Source Registry — shared reference
+# Memex Source Registry. Shared reference
 
 Conventions shared by `/memex:link-workspace`, `/memex:unlink-workspace`, and
 `/memex:cross-search`. CLI surface lives in `memex/scripts/sources.py`
@@ -6,7 +6,7 @@ Conventions shared by `/memex:link-workspace`, `/memex:unlink-workspace`, and
 
 ## Registry file
 
-`~/.memex/sources.md` — human-readable markdown, one `## <name>` block per
+`~/.memex/sources.md`. Human-readable markdown, one `## <name>` block per
 source with `path:`, `registered:`, `searchable:` fields. Local to the
 machine. Never transmitted.
 

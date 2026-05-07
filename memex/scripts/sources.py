@@ -194,6 +194,31 @@ def _search_facts_db(path: Path, query: str, limit: int = 20) -> list[str]:
     return out
 
 
+def _search_workspace(path: Path, query: str, include_facts: bool) -> tuple[list[str], list[str]]:
+    """Grep `_MANIFEST.md` + every `_CLOSETS.md`/`_CLOSETS-archive.md` under
+    `path`, plus optionally query its `memory/.facts.db`. Returns (grep_lines,
+    fact_lines).
+    """
+    targets = [
+        path / "_MANIFEST.md",
+        *path.rglob("_CLOSETS.md"),
+        *path.rglob("_CLOSETS-archive.md"),
+    ]
+    targets = [t for t in targets if t.exists()]
+    grep_lines: list[str] = []
+    if targets:
+        cmd = ["grep", "-Hn", "-i", query] + [str(t) for t in targets]
+        try:
+            out = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+            grep_lines = [ln for ln in out.stdout.splitlines() if ln.strip()]
+        except subprocess.TimeoutExpired:
+            grep_lines = ["(grep timeout)"]
+    fact_lines: list[str] = []
+    if include_facts:
+        fact_lines = _search_facts_db(path, query)
+    return grep_lines, fact_lines
+
+
 def cmd_search(args):
     sources = parse_registry()
     searchable = [s for s in sources if s.get("searchable", True)]
@@ -213,28 +238,9 @@ def cmd_search(args):
         if not path.is_dir():
             print(f"  [{s['name']}] (path missing: {path})\n")
             continue
-        targets = [
-            path / "_MANIFEST.md",
-            *path.rglob("_CLOSETS.md"),
-            *path.rglob("_CLOSETS-archive.md"),
-        ]
-        targets = [t for t in targets if t.exists()]
-        grep_lines: list[str] = []
-        if targets:
-            cmd = ["grep", "-Hn", "-i", query] + [str(t) for t in targets]
-            try:
-                out = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
-                grep_lines = [ln for ln in out.stdout.splitlines() if ln.strip()]
-            except subprocess.TimeoutExpired:
-                print(f"  [{s['name']}] grep timeout")
-
-        fact_lines: list[str] = []
-        if include_facts:
-            fact_lines = _search_facts_db(path, query)
-
+        grep_lines, fact_lines = _search_workspace(path, query, include_facts)
         if not grep_lines and not fact_lines:
             continue
-
         print(f"=== {s['name']} ({s['path']}) ===")
         for ln in grep_lines[:20]:
             print(f"  {ln}")
@@ -249,6 +255,61 @@ def cmd_search(args):
     summary = f"Total hits: {total_hits} grep across {len(searchable)} sources"
     if include_facts:
         summary += f" (+ {total_fact_hits} fact matches)"
+    print(summary)
+
+
+def cmd_search_local(args):
+    """Within-workspace search: grep `_MANIFEST.md` + every `_CLOSETS.md` /
+    `_CLOSETS-archive.md` under the current workspace, plus query its
+    `memory/.facts.db`. Output groups results by hub folder for cross-hub
+    queries within a single workspace.
+    """
+    path = Path(args.workspace).resolve() if hasattr(args, "workspace") and args.workspace else Path.cwd()
+    if not path.is_dir():
+        print(f"ERROR: {path} is not a directory", file=sys.stderr)
+        sys.exit(2)
+    if not (path / "_MANIFEST.md").exists():
+        print("ERROR: no _MANIFEST.md in current workspace. Run /memex:init first.", file=sys.stderr)
+        sys.exit(2)
+
+    query = args.query
+    include_facts = getattr(args, "facts", True)
+    suffix = " (+ facts.db)" if include_facts else ""
+    print(f"Searching workspace{suffix} for: {query}\n")
+
+    grep_lines, fact_lines = _search_workspace(path, query, include_facts)
+
+    if not grep_lines and not fact_lines:
+        print(f"No matches for \"{query}\" in {path}.")
+        return
+
+    by_folder: dict[str, list[str]] = {}
+    for ln in grep_lines:
+        try:
+            file_part = ln.split(":", 1)[0]
+            rel = str(Path(file_part).resolve().relative_to(path))
+        except ValueError:
+            rel = ln.split(":", 1)[0]
+        folder = str(Path(rel).parent) if "/" in rel else "."
+        by_folder.setdefault(folder, []).append(ln)
+
+    for folder in sorted(by_folder):
+        print(f"=== {folder} ===")
+        for ln in by_folder[folder][:20]:
+            print(f"  {ln}")
+        if len(by_folder[folder]) > 20:
+            print(f"  ... and {len(by_folder[folder])-20} more grep matches")
+        print()
+
+    if fact_lines:
+        print("=== facts.db ===")
+        for ln in fact_lines:
+            print(f"  {ln}")
+        print()
+
+    summary = f"Total hits: {len(grep_lines)} grep across {len(by_folder)} folders"
+    if include_facts:
+        summary += f" (+ {len(fact_lines)} fact matches)"
     print(summary)
 
 
@@ -282,13 +343,22 @@ def main():
     p.add_argument("--no-facts", dest="facts", action="store_false",
                    help="skip facts.db queries (manifest+closets only)")
 
+    p = sub.add_parser("search-local")
+    p.add_argument("query")
+    p.add_argument("--workspace", default=os.getcwd(),
+                   help="workspace path (default: current directory)")
+    p.add_argument("--facts", dest="facts", action="store_true", default=True,
+                   help="include facts.db queries (default: on)")
+    p.add_argument("--no-facts", dest="facts", action="store_false",
+                   help="skip facts.db queries (manifest+closets only)")
+
     sub.add_parser("where")
 
     args = parser.parse_args()
     cmd_map = {
         "list": cmd_list, "add": cmd_add, "remove": cmd_remove,
         "set-searchable": cmd_set_searchable, "search": cmd_search,
-        "where": cmd_where,
+        "search-local": cmd_search_local, "where": cmd_where,
     }
     cmd_map[args.cmd](args)
 

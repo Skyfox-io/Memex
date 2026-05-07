@@ -1,6 +1,6 @@
 # Migration reference
 
-> Referenced from the main init skill. Init detects an older `<!-- memex-managed:X.X.X -->` marker but does **not** migrate — that's `/memex:upgrade`'s job.
+> Referenced from the main init skill. Init detects an older `<!-- memex-managed:X.X.X -->` marker but does **not** migrate. That's `/memex:upgrade`'s job.
 
 ## What init does on old-version detection
 
@@ -14,6 +14,6 @@
 
 ## What changed across versions
 
-For the v1 → v2 changes specifically — closets pagination, typed-field `_CLOSETS.md`, summary-format-version `2`, temporal facts sidecar, typed-edge graph — see `memex/skills/upgrade/references/v1-to-v2.md`.
+For the v1 → v2 changes specifically. Closets pagination, typed-field `_CLOSETS.md`, summary-format-version `2`, temporal facts sidecar, typed-edge graph. See `memex/skills/upgrade/references/v1-to-v2.md`.
 
 Future major versions add their own playbooks under that directory. Init's role is just to point users at the right tool.

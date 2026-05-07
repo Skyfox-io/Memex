@@ -2,7 +2,7 @@
 name: link-workspace
 description: >
   Trigger when the user wants this Memex workspace to become searchable
-  from their other workspaces — e.g., "register this workspace", "add
+  from their other workspaces; e.g., "register this workspace", "add
   this to my Memex sources", or any setup step where they're about to
   use `/memex:cross-search` from a different workspace and need this one
   on the registry first.
@@ -47,7 +47,7 @@ Opt out:
 
 ## Gotchas
 
-- **Path is captured at link time, absolute.** If the workspace later moves, the registry entry breaks silently — cross-search will report "path missing". Re-link after moves.
+- **Path is captured at link time, absolute.** If the workspace later moves, the registry entry breaks silently. Cross-search will report "path missing". Re-link after moves.
 - **Not idempotent.** Re-running with the same name errors out instead of updating. To change the path, unlink then re-link.
-- **`_MANIFEST.md` missing only warns, doesn't block** at the script layer. This skill validates first so the user gets a clearer message — don't skip Step 0.
+- **`_MANIFEST.md` missing only warns, doesn't block** at the script layer. This skill validates first so the user gets a clearer message. Don't skip Step 0.
 - **Symlinked workspace roots** are resolved to their real path by the script. If you link via a symlink, the registry shows the resolved target.

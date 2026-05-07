@@ -1,8 +1,8 @@
 # Memex on LongMemEval-S
 
-Reproducible retrieval-recall benchmark for Memex's hub-and-spoke retrieval, run against the 500-question [LongMemEval-S](https://huggingface.co/datasets/xiaowu0162/longmemeval) subset (Wu et al., ICLR 2025, [arXiv:2410.10813](https://arxiv.org/abs/2410.10813)).
+Reproducible retrieval-recall benchmark for Memex's hub-and-spoke retrieval, run against the 500-question [LongMemEval-S](https://github.com/xiaowu0162/LongMemEval) subset (Wu et al., ICLR 2025, [arXiv:2410.10813](https://arxiv.org/abs/2410.10813)).
 
-The point: get a real, comparable number for *"does Memex find the right session in its top K?"* — without spending money on judge models or end-to-end QA.
+The point: get a real, comparable number for *"does Memex find the right session in its top K?"*, without spending money on judge models or end-to-end QA.
 
 ## Headline
 
@@ -12,26 +12,26 @@ The point: get a real, comparable number for *"does Memex find the right session
 | `closets:embed` (single-vector baseline) | 87.9% | 92.9% | 0.858 | — | 95.0% |
 | `content:bm25` (full-text upper bound) | 90.6% | 94.6% | 0.905 | 0.892 | 96.8% |
 
-500 questions. ~3-5 minutes wallclock for `emax`. **$0** — no API keys, all local.
+500 questions. ~3-5 minutes wallclock for `emax`. **$0.** No API keys, all local.
 
 ### What that means
 
-`closets:emax` lands at 90.1% R@5 — within 0.5pp of the upper bound represented by `content:bm25`, which indexes the entire raw session text. The closets representation achieves nearly the same retrieval quality at roughly **1/10th the size**, with each field (`subjects`, `people`, `claims`, `decisions`, `dates`) explicitly typed so an LLM's attention can zoom to the right line for a question.
+`closets:emax` lands at 90.1% R@5, within 0.5pp of the upper bound represented by `content:bm25`, which indexes the entire raw session text. The closets representation achieves nearly the same retrieval quality at roughly **1/10th the size**, with each field (`subjects`, `people`, `claims`, `decisions`, `dates`) explicitly typed so an LLM's attention can zoom to the right line for a question.
 
 ### What we ship to get here
 
 - **No hosted services, no API keys at retrieval time.** The benchmark runs offline.
 - **No learned vector index.** No FAISS, no HNSW, no ChromaDB. Cosine over a small in-memory matrix.
-- **No proprietary database.** No SQLite schemas, no Postgres, no pgvector. The closets file IS the index — plain markdown, ~30 entries × ~1 KB.
+- **No proprietary database.** No SQLite schemas, no Postgres, no pgvector. The closets file IS the index: plain markdown, ~30 entries × ~1 KB.
 - **Lightweight Python deps:** `numpy`, `rank_bm25`, `sentence-transformers` (with `all-MiniLM-L6-v2`, ~90 MB on first run). No GPU required.
 
-Production Memex performs LLM-mediated retrieval over the same closets at session-start, so this benchmark is a deterministic proxy for how well Memex actually retrieves on a real workspace — without a judge model or end-to-end QA cost.
+Production Memex performs LLM-mediated retrieval over the same closets at session-start, so this benchmark is a deterministic proxy for how well Memex actually retrieves on a real workspace, without a judge model or end-to-end QA cost.
 
 ## What the benchmark measures
 
 A LongMemEval-S question gives the system a *haystack* of ~54 conversation sessions plus a question that can only be answered by retrieving the right session(s). The benchmark scores how well a retriever ranks the correct sessions in its top K.
 
-Memex retrieves by scanning *closets* — per-hub `_CLOSETS.md` files that enumerate every file's distinct subjects, named entities, verbatim claims, decisions, dates, and status. To score this deterministically without running a real LLM, the harness builds a synthetic closets entry for each session via deterministic regex extraction (`prepare_closets.py`), then ranks via BM25 or embedding cosine. The heuristic is a floor; the LLM-mediated production version writes richer closets and is expected to perform at least as well.
+Memex retrieves by scanning *closets*: per-hub `_CLOSETS.md` files that enumerate every file's distinct subjects, named entities, verbatim claims, decisions, dates, and status. To score this deterministically without running a real LLM, the harness builds a synthetic closets entry for each session via deterministic regex extraction (`prepare_closets.py`), then ranks via BM25 or embedding cosine. The heuristic is a floor; the LLM-mediated production version writes richer closets and is expected to perform at least as well.
 
 Strategy syntax is `<extractor>:<ranker>`:
 
@@ -70,8 +70,8 @@ prior `closets:embed` baseline:
 | temporal-reasoning | 133 | 83.4% | 84.1% | +0.7pp |
 | **overall** | 500 | **87.7%** | **90.1%** | **+2.4pp** |
 
-Robustly positive across every category — no regressions. The biggest wins are
-on knowledge-updates and multi-session — exactly the cases where structured
+Robustly positive across every category, no regressions. The biggest wins are
+on knowledge-updates and multi-session, exactly the cases where structured
 typed-field retrieval disambiguates better than a single squashed embedding.
 
 ## Cost discipline
@@ -130,4 +130,5 @@ Outputs paired-bootstrap 95% CIs and significance markers, computed on the same 
 
 - LongMemEval paper: [arXiv:2410.10813](https://arxiv.org/abs/2410.10813)
 - LongMemEval repo: [xiaowu0162/LongMemEval](https://github.com/xiaowu0162/LongMemEval)
-- Dataset: [HuggingFace xiaowu0162/longmemeval](https://huggingface.co/datasets/xiaowu0162/longmemeval)
+- Dataset (legacy, used by `download.py` for reproducibility of the 90.1% R@5 number): [HuggingFace xiaowu0162/longmemeval](https://huggingface.co/datasets/xiaowu0162/longmemeval)
+- Dataset (cleaned variant the authors now recommend for new work): [HuggingFace xiaowu0162/longmemeval-cleaned](https://huggingface.co/datasets/xiaowu0162/longmemeval-cleaned)

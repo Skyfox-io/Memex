@@ -4,7 +4,7 @@ description: >
   Move a file from active (Tier 2) to archived (Tier 3) so Memex stops loading it
   automatically. Use when a project wraps, a reference goes stale, a file is
   superseded by a newer version, or the user says "archive X", "retire X",
-  "stop loading X", or runs /memex:archive. The file stays on disk — only its
+  "stop loading X", or runs /memex:archive. The file stays on disk; only its
   manifest tier and hub status change.
 argument-hint: "[filename]"
 disable-model-invocation: true
@@ -39,7 +39,7 @@ If `$ARGUMENTS` is set, use it. Otherwise read the Tier 2 sections from `_MANIFE
 
 Read the relevant domain hub. Set the file's status to `Archived`, or remove it from the active table.
 
-Then update the file's entry in `<domain>/_CLOSETS.md` (or `_CLOSETS-archive.md` if it lives there per pagination). Change the entry's `status:` line to `status: archived`. If the file has no closets entry yet, skip — session-end will not re-create it for an archived file.
+Then update the file's entry in `<domain>/_CLOSETS.md` (or `_CLOSETS-archive.md` if it lives there per pagination). Change the entry's `status:` line to `status: archived`. If the file has no closets entry yet, skip. Session-end will not re-create it for an archived file.
 
 Closets schema and field semantics: [`memex/skills/session-end/references/closets-format.md`](../session-end/references/closets-format.md).
 
@@ -58,8 +58,8 @@ To unarchive: move the row back to Tier 2 in _MANIFEST.md.
 
 ## Gotchas
 
-- **Archive is a manifest move, not a file deletion.** The file stays on disk. Don't `rm` it. Don't move it to an `archive/` folder unless the user explicitly asks — that breaks existing wikilinks.
+- **Archive is a manifest move, not a file deletion.** The file stays on disk. Don't `rm` it. Don't move it to an `archive/` folder unless the user explicitly asks. That breaks existing wikilinks.
 - **Tier 3 entries still need wikilinks.** Use `[[filename]]` in the Tier 3 row so the Obsidian graph keeps the node connected.
-- **Don't strip the closets entry.** The file's `_CLOSETS.md` entry stays, with `status: archived`. Future searches still surface it — just lower priority.
+- **Don't strip the closets entry.** The file's `_CLOSETS.md` entry stays, with `status: archived`. Future searches still surface it, just at lower priority.
 - **Tier 1 files don't archive.** `status.md`, `decisions.md`, `glossary.md`, etc. are always-loaded by design. Refuse and explain.
-- **Reason is load-bearing.** Examples: "wrapped", "superseded by `[[new-file]]`", "stale" — future you reads this when deciding whether to unarchive. "no longer needed" is not a reason.
+- **Reason is load-bearing.** Examples: "wrapped", "superseded by `[[new-file]]`", "stale". Future you reads this when deciding whether to unarchive. "no longer needed" is not a reason.

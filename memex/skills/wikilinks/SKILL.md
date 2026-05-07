@@ -2,7 +2,7 @@
 name: wikilinks
 description: >
   Verify wikilink integrity (broken `[[targets]]`), then optionally suggest plain-text-to-wikilink
-  conversions across the workspace. Explicit-invocation only — the conversion sweep is a workspace-wide
+  conversions across the workspace. Explicit-invocation only; the conversion sweep is a workspace-wide
   bulk edit (auto-firing on a casual rename could propose hundreds of changes). Use when the
   user runs `/memex:wikilinks` directly, or says "verify wikilinks", "check for broken links",
   "convert plain text references to wikilinks", or "fix the Obsidian graph". For broader workspace

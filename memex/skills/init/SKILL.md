@@ -35,10 +35,10 @@ Do not announce the detected state. Just run the appropriate flow.
 
 ## Quick Start (empty workspace)
 
-1. Ask: **"What are you working on right now?"** — seeds `status.md` with active focus, in-progress items, next priorities.
-2. Create from `templates/`: `memory/status.md`, `memory/session-log.md`, `memory/decisions.md`, `memory/glossary.md`, `scratch/ideas.md`.
+1. Ask: **"What are you working on right now?".** Seeds `status.md` with active focus, in-progress items, next priorities.
+2. Create from `templates/`: `memory/status.md`, `memory/session-log.md`, `memory/decisions.md`, `memory/glossary.md`, `memory/_CLOSETS.md` (use `memory-closets.md.tmpl`), `scratch/ideas.md`.
 3. Append the three Memex lines to workspace-root `CLAUDE.md` (template at `templates/CLAUDE.md.tmpl`). Preserve existing content. Skip if `.claude/CLAUDE.md` already has them.
-4. Create `_MANIFEST.md` from `templates/_MANIFEST.md.tmpl` — Tier 1 table, empty Tier 2/3, empty Hub Map. **Write last** — it's the activation marker.
+4. Create `_MANIFEST.md` from `templates/_MANIFEST.md.tmpl`. Tier 1 table, empty Tier 2/3, empty Hub Map. **Write last.** It's the activation marker.
 5. Print the post-setup message in `references/post-setup-message.md`.
 
 ---
@@ -65,7 +65,7 @@ See `references/migrations.md`. For a one-command v1→v2 upgrade that orchestra
 
 - Every file reference in a hub table or `_MANIFEST.md` uses `[[filename]]`.
 - When moving a file, search `.md` files for `[[old-name]]` and update to `[[new-name]]`.
-- After all writes, run wikilink verification — must be CLEAN.
+- After all writes, run wikilink verification. Must be CLEAN.
 
 ---
 
@@ -73,11 +73,11 @@ See `references/migrations.md`. For a one-command v1→v2 upgrade that orchestra
 
 - **Foreign session hooks in root `CLAUDE.md`.** If another plugin already owns session-start/session-end, ask which plugin should own the lifecycle. Don't silently overwrite.
 - **`.claude/CLAUDE.md` is platform-managed.** Always target the workspace-root `CLAUDE.md`, never `.claude/CLAUDE.md`.
-- **Manifest is the activation marker — write it last.** A partial scaffold without `_MANIFEST.md` is recoverable; a manifest pointing at files that don't exist will break session-start.
+- **Manifest is the activation marker. Write it last.** A partial scaffold without `_MANIFEST.md` is recoverable; a manifest pointing at files that don't exist will break session-start.
 - **Catch-all folders are not domains.** A `notes/` folder with meeting notes + ideas + decisions mixed together should be dissolved file-by-file, not turned into a `notes-index.md` hub.
 - **Wikilink conversion false-positives on short stems.** `api.md` will match every "API" in prose. Pass 1 (automated) only does exact filename or hyphen-to-space matches; Pass 2 (semantic) requires user confirmation. Don't merge them.
 - **Conflicting files are surfaced, not merged.** If two files cover the same topic with different content, ask which is authoritative before placing either. Silent merge loses information.
-- **Stale files route to Tier 3, not active domains.** Markers like `outdated`, `deprecated`, `superseded`, `v1` (when v2 exists) — these go straight to archive, even if their topic matches an active domain.
+- **Stale files route to Tier 3, not active domains.** Markers like `outdated`, `deprecated`, `superseded`, `v1` (when v2 exists). These go straight to archive, even if their topic matches an active domain.
 
 ---
 

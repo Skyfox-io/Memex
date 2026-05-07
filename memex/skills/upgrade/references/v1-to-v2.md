@@ -33,7 +33,7 @@ Reindex never edits hub indexes or domain content files. Orphans (files in a dom
 ## What stays untouched
 
 - All Tier 2 / Tier 3 content files (your actual work)
-- Hub index file *contents* (the file table — except where resummarize rewrites the per-file summary column)
+- Hub index file *contents* (the file table. Except where resummarize rewrites the per-file summary column)
 - `memory/status.md`, `memory/session-log.md`, `memory/decisions.md`, `memory/glossary.md`, `scratch/ideas.md` (their summaries are rewritten in the manifest, but the files themselves are not touched)
 - All `[[wikilinks]]` (verified via `verify-wikilinks.py` after the upgrade; broken links surface but are not auto-fixed)
 
@@ -52,11 +52,11 @@ Net new disk: ~5-15 KB per hub. None of it is auto-loaded above what session-sta
 
 ## Things that can go wrong
 
-1. **Resummarize hits a file with sparse content.** v2 summaries enumerate distinct subjects; if a file is mostly boilerplate or reference data, the summary may end up shorter than v1's. That's correct behavior — there are no subjects to enumerate. Don't pad.
+1. **Resummarize hits a file with sparse content.** V2 summaries enumerate distinct subjects; if a file is mostly boilerplate or reference data, the summary may end up shorter than v1's. That's correct behavior. There are no subjects to enumerate. Don't pad.
 
-2. **Reindex flags lots of orphans.** If users have been dropping files in domain folders without running `/memex:add-domain`, the upgrade surfaces them all at once. This is good — orphans were invisible in v1 — but the report can be long. Resolve incrementally; the upgrade itself is complete regardless.
+2. **Reindex flags lots of orphans.** If users have been dropping files in domain folders without running `/memex:add-domain`, the upgrade surfaces them all at once. This is good. Orphans were invisible in v1. But the report can be long. Resolve incrementally; the upgrade itself is complete regardless.
 
-3. **The 8 rules' "decision reversal" pattern (rule 7) can surprise.** A hub with a long history of pivots (switched from X to Y, abandoned Z, picked A over B) will get summaries that read more like a changelog than a topic descriptor. That's by design — temporal questions ("why did we leave X?") need that explicit verb in the summary to surface.
+3. **The 8 rules' "decision reversal" pattern (rule 7) can surprise.** A hub with a long history of pivots (switched from X to Y, abandoned Z, picked A over B) will get summaries that read more like a changelog than a topic descriptor. That's by design. Temporal questions ("why did we leave X?") need that explicit verb in the summary to surface.
 
 4. **Closets pagination engages on the first reindex if a hub has > 30 files.** Pagination is a v2 feature; v1 workspaces never hit it. The upgrade applies the new layout in one pass.
 
@@ -74,4 +74,4 @@ Run a fresh `/memex:session-start` to verify:
 - Pre-loading a domain should now read the hub's `_CLOSETS.md` first instead of opening files speculatively.
 - `/memex:lint` should report PASS on the new checks (typed-edge graph integrity, summary-format-version compliance).
 
-If anything looks off, `/memex:upgrade --force` re-runs every step on a clean pass — no state to recover from, just rewrites.
+If anything looks off, `/memex:upgrade --force` re-runs every step on a clean pass. No state to recover from, just rewrites.

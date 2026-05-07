@@ -13,7 +13,7 @@ Every contribution must preserve six gates:
 5. **Markdown stays primary.** Files are human-readable, version-controllable, Obsidian-compatible.
 6. **Backwards-compatible.** Existing workspaces upgrade silently.
 
-If a proposed change violates any gate, it doesn't ship. The `benchmarks/` directory is the only exception — its tooling uses pip-installed packages but never runs on user machines.
+If a proposed change violates any gate, it doesn't ship. The `benchmarks/` directory is the only exception. Its tooling uses pip-installed packages but never runs on user machines.
 
 **Why the gates matter:** Memex's edge over a "bigger, smarter memory" is that it works with zero infrastructure. A user who installs the plugin and runs `/memex:init` is productive in 30 seconds. Any gate violation moves Memex toward "yet another memory framework that needs setup, accounts, or trust" and away from "drop-in for any Cowork workspace". Backwards compat preserves user trust across upgrades; the v2 release retained every v1.x workspace shape and added v2 features purely additively.
 
@@ -137,7 +137,7 @@ status: active | superseded | archived | draft
 
 ## Benchmarks
 
-`benchmarks/longmemeval/` is a self-contained retrieval benchmark on LongMemEval-S. The tooling there installs `numpy`, `rank_bm25`, `sentence-transformers`, etc. into a `.venv` — that's allowed because it's contributor-only and never runs on user machines.
+`benchmarks/longmemeval/` is a self-contained retrieval benchmark on LongMemEval-S. The tooling there installs `numpy`, `rank_bm25`, `sentence-transformers`, etc. into a `.venv`. That's allowed because it's contributor-only and never runs on user machines.
 
 To re-baseline:
 
