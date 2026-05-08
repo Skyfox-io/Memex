@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.1.2] - 2026-05-07
+
+Skill architecture change: scripts now live in their consuming skill folders.
+
+### Changed
+
+- Each skill that invokes a deterministic helper (`verify-wikilinks.py`, `extract-graph.py`, `sources.py`) ships its own copy at `<skill>/scripts/<script>.py`. Skills resolve scripts via `${CLAUDE_SKILL_DIR}/scripts/<script>.py` — self-contained, no plugin-root traversal. The top-level `memex/scripts/` directory has been removed; tests, CI, and docs reference the owner-skill copies (`wikilinks/`, `lint/`, `cross-search/`). A drift check in `tests/test_scripts.py` keeps mirrors byte-identical.
+
 ## [2.1.1] - 2026-05-06
 
 Two changes: drop the unpopulated facts.db sidecar, reframe the benchmark headline.

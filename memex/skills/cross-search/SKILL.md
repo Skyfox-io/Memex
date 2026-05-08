@@ -16,7 +16,7 @@ argument-hint: "<query>"
 
 Grep across every searchable workspace in `~/.memex/sources.md`, grouped by source. Reads only `_MANIFEST.md`, every `_CLOSETS.md`, and every `_CLOSETS-archive.md`. Fast and deterministic.
 
-Registry conventions, script-path resolution, and privacy semantics: see `references/registry.md`. CLI surface: `memex/scripts/sources.py`.
+Registry conventions, script-path resolution, and privacy semantics: see `references/registry.md`. CLI surface: `${CLAUDE_SKILL_DIR}/scripts/sources.py`.
 
 ## Step 1: Query
 
@@ -24,12 +24,12 @@ Use `$ARGUMENTS` as the query. If empty, ask: "What do you want to search for ac
 
 ## Step 2: Confirm sources exist
 
-`python3 <sources.py> list`. If none searchable, tell the user: "No linked workspaces yet. Run `/memex:link-workspace` from a workspace to register it."
+`python3 "${CLAUDE_SKILL_DIR}/scripts/sources.py" list`. If none searchable, tell the user: "No linked workspaces yet. Run `/memex:link-workspace` from a workspace to register it."
 
 ## Step 3: Search
 
 ```
-python3 <sources.py> search "<query>"
+python3 "${CLAUDE_SKILL_DIR}/scripts/sources.py" search "<query>"
 ```
 
 The script greps each searchable source's `_MANIFEST.md`, `_CLOSETS.md`, and `_CLOSETS-archive.md` for matches. Results are grouped by source.

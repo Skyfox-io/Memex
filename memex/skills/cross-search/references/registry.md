@@ -1,8 +1,9 @@
 # Memex Source Registry. Shared reference
 
 Conventions shared by `/memex:link-workspace`, `/memex:unlink-workspace`, and
-`/memex:cross-search`. CLI surface lives in `memex/scripts/sources.py`
-(read its module docstring for subcommand reference).
+`/memex:cross-search`. CLI surface is `sources.py`, co-located with each
+consuming skill at `<skill>/scripts/sources.py` (read its module docstring
+for subcommand reference).
 
 ## Registry file
 
@@ -12,12 +13,8 @@ machine. Never transmitted.
 
 ## Script path resolution
 
-Skills resolve `sources.py` in this order:
-
-1. `${CLAUDE_PLUGIN_ROOT}/scripts/sources.py`
-2. `${CLAUDE_SKILL_DIR}/../../scripts/sources.py`
-
-Invoke with `python3 <path> <subcommand> ...`.
+Each consuming skill ships its own copy at `${CLAUDE_SKILL_DIR}/scripts/sources.py`.
+Invoke with `python3 "${CLAUDE_SKILL_DIR}/scripts/sources.py" <subcommand> ...`.
 
 ## Searchable / privacy semantics
 

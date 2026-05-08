@@ -69,11 +69,11 @@ Three sub-checks.
 
 ### 3a. Wikilink dangling
 
-Run `verify-wikilinks.py` (path resolution as in [session-end](../session-end/SKILL.md) Step 8a). Report broken wikilinks. With `--fix`, do nothing. Broken wikilinks need user judgment.
+Run `${CLAUDE_SKILL_DIR}/scripts/verify-wikilinks.py` against the workspace. Report broken wikilinks. With `--fix`, do nothing. Broken wikilinks need user judgment.
 
 ### 3b. Frontmatter dangling and graph refresh
 
-Resolve `extract-graph.py` (`${CLAUDE_PLUGIN_ROOT}/scripts/extract-graph.py` → `${CLAUDE_SKILL_DIR}/../../scripts/extract-graph.py`).
+Run `${CLAUDE_SKILL_DIR}/scripts/extract-graph.py` against the workspace.
 
 First run with `--check` to surface dangling edges (typed references to missing files). Report each.
 

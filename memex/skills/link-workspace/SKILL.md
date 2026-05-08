@@ -14,7 +14,7 @@ disable-model-invocation: true
 
 **Wikilink rule:** When referencing any file in markdown, always use `[[filename]]` wikilink format.
 
-Register the current workspace in `~/.memex/sources.md`. Registry conventions, script-path resolution, and privacy semantics live in `memex/skills/cross-search/references/registry.md`. CLI surface: `memex/scripts/sources.py`.
+Register the current workspace in `~/.memex/sources.md`. Registry conventions, script-path resolution, and privacy semantics live in `memex/skills/cross-search/references/registry.md`. CLI surface: `${CLAUDE_SKILL_DIR}/scripts/sources.py`.
 
 ## Step 0: Validate workspace
 
@@ -27,10 +27,10 @@ Use `$ARGUMENTS` if provided. Otherwise propose a slug-ified default from the wo
 ## Step 2: Register
 
 ```
-python3 <sources.py> add <source-name> <WORKSPACE_ROOT>
+python3 "${CLAUDE_SKILL_DIR}/scripts/sources.py" add <source-name> <WORKSPACE_ROOT>
 ```
 
-If the script reports the name is taken: tell the user "A source named '<name>' is already registered (run `python3 <sources.py> list` to see all). Pick a different name or `/memex:unlink-workspace <name>` first."
+If the script reports the name is taken: tell the user "A source named '<name>' is already registered (run `python3 "${CLAUDE_SKILL_DIR}/scripts/sources.py" list` to see all). Pick a different name or `/memex:unlink-workspace <name>` first."
 
 ## Step 3: Confirm
 
@@ -42,7 +42,7 @@ Searchable from other workspaces via:
   /memex:cross-search <query>
 
 Opt out:
-  python3 <sources.py> set-searchable <source-name> false
+  python3 "${CLAUDE_SKILL_DIR}/scripts/sources.py" set-searchable <source-name> false
 ```
 
 ## Gotchas

@@ -102,13 +102,12 @@ The `memory/` hub never paginates (small fixed set). Skip steps 1-6 there; just 
 
 ## Step 5: Verify and refresh typed-edge graph
 
-Run `verify-wikilinks.py` (path resolution as in [session-end](../session-end/SKILL.md) Step 8a) to confirm no closets entry references a missing file. List broken entries in the report; don't auto-delete.
+Run `${CLAUDE_SKILL_DIR}/scripts/verify-wikilinks.py` against the workspace to confirm no closets entry references a missing file. List broken entries in the report; don't auto-delete.
 
 Then refresh the typed-edge graph (no longer rebuilt at session-end):
 
-1. Resolve `extract-graph.py` (`${CLAUDE_PLUGIN_ROOT}/scripts/extract-graph.py` → `${CLAUDE_SKILL_DIR}/../../scripts/extract-graph.py`).
-2. Run with the workspace path. It writes `memory/.graph.md`.
-3. Surface any dangling edges (typed references to nonexistent files) in the report.
+1. Run `${CLAUDE_SKILL_DIR}/scripts/extract-graph.py` against the workspace path. It writes `memory/.graph.md`.
+2. Surface any dangling edges (typed references to nonexistent files) in the report.
 
 Skip if the script is unresolvable. Typed edges are opt-in.
 

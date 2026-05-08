@@ -21,10 +21,33 @@ import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-SCRIPTS = ROOT / "memex" / "scripts"
-VERIFY = SCRIPTS / "verify-wikilinks.py"
-EXTRACT = SCRIPTS / "extract-graph.py"
-SOURCES = SCRIPTS / "sources.py"
+SKILLS = ROOT / "memex" / "skills"
+
+# Each script is co-located with its consuming skill(s). The owner skill below
+# holds the canonical copy that tests run against; other consuming skills get
+# byte-identical mirrors enforced by test_scripts_no_drift.
+VERIFY = SKILLS / "wikilinks" / "scripts" / "verify-wikilinks.py"
+EXTRACT = SKILLS / "lint" / "scripts" / "extract-graph.py"
+SOURCES = SKILLS / "cross-search" / "scripts" / "sources.py"
+
+# Full mirror map: owner copy -> list of consuming-skill copies that must match.
+SCRIPT_MIRRORS = {
+    VERIFY: [
+        SKILLS / "session-end" / "scripts" / "verify-wikilinks.py",
+        SKILLS / "consolidate" / "scripts" / "verify-wikilinks.py",
+        SKILLS / "reindex" / "scripts" / "verify-wikilinks.py",
+        SKILLS / "resummarize" / "scripts" / "verify-wikilinks.py",
+    ],
+    EXTRACT: [
+        SKILLS / "consolidate" / "scripts" / "extract-graph.py",
+        SKILLS / "reindex" / "scripts" / "extract-graph.py",
+    ],
+    SOURCES: [
+        SKILLS / "search" / "scripts" / "sources.py",
+        SKILLS / "link-workspace" / "scripts" / "sources.py",
+        SKILLS / "unlink-workspace" / "scripts" / "sources.py",
+    ],
+}
 
 
 def run(cmd, cwd=None, expect_exit=0):
@@ -203,6 +226,28 @@ def test_sources_search_local_groups_by_folder(tmp_home_for_sources):
         assert "Total hits" in result.stdout
 
 
+# --- script drift (owner copy vs mirrors) ---------------------------------
+
+def test_scripts_no_drift():
+    """Each consuming skill ships its own copy of the deterministic helpers.
+    Owner copies (wikilinks/, lint/, cross-search/) are canonical; the other
+    skill folders must hold byte-identical mirrors. If this fails, edit the
+    owner copy and `cp` it over every consuming skill listed in SCRIPT_MIRRORS.
+    """
+    drift = []
+    for owner, mirrors in SCRIPT_MIRRORS.items():
+        owner_bytes = owner.read_bytes()
+        for mirror in mirrors:
+            if not mirror.exists():
+                drift.append(f"missing mirror: {mirror.relative_to(ROOT)}")
+                continue
+            if mirror.read_bytes() != owner_bytes:
+                drift.append(
+                    f"drift: {mirror.relative_to(ROOT)} != {owner.relative_to(ROOT)}"
+                )
+    assert not drift, "Script copies have diverged:\n  " + "\n  ".join(drift)
+
+
 # --- pytest fixtures (only used if pytest is available) -------------------
 
 try:
@@ -228,6 +273,7 @@ def main_standalone():
         ("extract_graph_basic", test_extract_graph_basic),
         ("extract_graph_dangling", test_extract_graph_dangling),
         ("extract_graph_no_frontmatter", test_extract_graph_no_frontmatter),
+        ("scripts_no_drift", test_scripts_no_drift),
     ]
     # sources tests use a fixture; run them manually
     def run_sources_test():

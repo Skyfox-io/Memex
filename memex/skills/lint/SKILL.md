@@ -121,7 +121,7 @@ Skip if the workspace has no `<!-- memex-managed` marker (compatible mode predat
 
 ### 3.6 Typed-Edge Graph Integrity
 
-Resolve `extract-graph.py` (`${CLAUDE_PLUGIN_ROOT}/scripts/extract-graph.py` → `${CLAUDE_SKILL_DIR}/../../scripts/extract-graph.py`). Run with `--check` against the workspace. Exits 1 with dangling-edge list if any typed-edge frontmatter (`supersedes`, `superseded-by`, `blocks`, `blocked-by`, `people`, `projects`) targets a missing file.
+Run `${CLAUDE_SKILL_DIR}/scripts/extract-graph.py` with `--check` against the workspace. Exits 1 with dangling-edge list if any typed-edge frontmatter (`supersedes`, `superseded-by`, `blocks`, `blocked-by`, `people`, `projects`) targets a missing file.
 
 - **WARN** for each dangling edge: `[[source]] <edge-type> → [[target]] (target file not found)`.
 - **PASS** if no dangling edges, OR if the script is unavailable (typed edges are opt-in -- see Gotchas), OR if no files have frontmatter.
@@ -254,7 +254,7 @@ If the user didn't ask for fixes, stop after Step 5. Do not prompt.
 - **Orphan = "not registered in closets" (or hub table for legacy hubs).** A file with inbound `[[wikilinks]]` from across the workspace is still an orphan if its hub's closets file doesn't list it. Closets are the source of truth in v2.1+.
 - **Orphan folders are folders, not files.** ORPHAN FILES checks files inside known hub folders. ORPHAN FOLDERS checks for hub folders that don't exist in the Hub Map at all (e.g., a `morning-briefs/` directory dropped at workspace root). Both checks run on every lint.
 - **Decision-supersede detection is keyword-based.** Only flags when a newer entry literally contains "supersedes/replaces/dropped/no longer/instead of/reverses/overrides". Semantic contradictions without those phrases pass silently. False negatives over false positives by design.
-- **`extract-graph.py` missing → graph check passes silently.** Typed edges are opt-in. If the script is unresolvable on both `${CLAUDE_PLUGIN_ROOT}` and `${CLAUDE_SKILL_DIR}/../../scripts/`, the TYPED-EDGE GRAPH category reports PASS, not WARN. Don't read a passing graph check as proof the graph is healthy unless you've confirmed the script ran.
+- **`extract-graph.py` missing → graph check passes silently.** Typed edges are opt-in. If `${CLAUDE_SKILL_DIR}/scripts/extract-graph.py` can't be found, the TYPED-EDGE GRAPH category reports PASS, not WARN. Don't read a passing graph check as proof the graph is healthy unless you've confirmed the script ran.
 - **Stale-blocker check needs `session-log.md`.** If session-log is missing or empty, blockers can't be aged. The check passes by default -- don't conflate that with "no stale blockers".
 - **Closets coverage check ignores compatible-mode workspaces.** Without a `<!-- memex-managed` marker, the workspace predates v2 conventions; nagging about `_CLOSETS.md` would just spam.
 - **Suggested next actions are advisory.** Lint never auto-runs `/memex:reindex`, `/memex:resummarize`, or `/memex:consolidate` -- the footer points at them so the user (or another agent) can decide.

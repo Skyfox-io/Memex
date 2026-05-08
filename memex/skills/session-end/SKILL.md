@@ -155,12 +155,11 @@ Skip this step if no decisions were made.
 
 ### 8a. Wikilink integrity
 
-Resolve the script path:
+Run the script at `${CLAUDE_SKILL_DIR}/scripts/verify-wikilinks.py` against the workspace, passing `--skip .claude .obsidian .git` plus any scratch directory path:
 
-1. `${CLAUDE_PLUGIN_ROOT}/scripts/verify-wikilinks.py` (if set)
-2. `${CLAUDE_SKILL_DIR}/../../scripts/verify-wikilinks.py` (fallback)
-
-Pass `--skip .claude .obsidian .git` plus any scratch directory path.
+```
+python3 "${CLAUDE_SKILL_DIR}/scripts/verify-wikilinks.py" "$WORKSPACE_ROOT" --skip .claude .obsidian .git
+```
 
 If the script can't be found, report "Wikilink script not found - skipping." Do not silently pass.
 
@@ -171,7 +170,7 @@ If broken links are found, fix them. Target is always zero.
 If any markdown files were created or modified this session (from Step 2's internal summary), run a scoped suggest pass to catch new plain-text references that should be wikilinks:
 
 ```
-python3 [verify-wikilinks-script] "$WORKSPACE_ROOT" --suggest --files <file1> <file2> ... --skip .claude .obsidian .git
+python3 "${CLAUDE_SKILL_DIR}/scripts/verify-wikilinks.py" "$WORKSPACE_ROOT" --suggest --files <file1> <file2> ... --skip .claude .obsidian .git
 ```
 
 If the suggest pass returns hits, surface them in the close report. Apply automatically only for unambiguous matches (the suggested wikilink stem and the plain-text match are an exact case-fold match for an existing file). For any ambiguous hits (short stems, multiple candidate targets), list them and let the user route.

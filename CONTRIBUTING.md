@@ -45,14 +45,14 @@ These exercise `verify-wikilinks.py`, `extract-graph.py`, and `sources.py` again
 
 **2. Wikilink integrity (examples):**
 ```bash
-python3 memex/scripts/verify-wikilinks.py examples/nonprofit
-python3 memex/scripts/verify-wikilinks.py examples/startup
+python3 memex/skills/wikilinks/scripts/verify-wikilinks.py examples/nonprofit
+python3 memex/skills/wikilinks/scripts/verify-wikilinks.py examples/startup
 ```
 
 **3. Typed-edge graph integrity (examples):**
 ```bash
-python3 memex/scripts/extract-graph.py examples/nonprofit --check
-python3 memex/scripts/extract-graph.py examples/startup --check
+python3 memex/skills/lint/scripts/extract-graph.py examples/nonprofit --check
+python3 memex/skills/lint/scripts/extract-graph.py examples/startup --check
 ```
 
 **4. No placeholder text in examples:**
@@ -103,13 +103,20 @@ If you change a summary-writing rule or storage format:
 
 ## Contributing Scripts
 
-The `memex/scripts/` directory holds the deterministic helpers (`verify-wikilinks.py`, `extract-graph.py`, `sources.py`). Rules:
+Each consuming skill ships its own copy of the deterministic helpers (`verify-wikilinks.py`, `extract-graph.py`, `sources.py`) in its `scripts/` subfolder. Owner skills hold the canonical version that tests, CI, and docs reference:
+
+- `verify-wikilinks.py` → `memex/skills/wikilinks/scripts/`
+- `extract-graph.py` → `memex/skills/lint/scripts/`
+- `sources.py` → `memex/skills/cross-search/scripts/`
+
+Rules:
 
 1. **Python stdlib only.** No `pip install`. No new runtime deps.
 2. Add a `#!/usr/bin/env python3` shebang and `chmod +x`.
 3. Use `argparse` subcommands for verbs.
 4. Add a test in `tests/test_scripts.py` for any new behavior.
 5. Document the flag surface in the docstring at the top of the file.
+6. **Edit the owner copy, then mirror to every other consuming skill.** `tests/test_scripts.py` includes a drift check that fails CI if copies diverge.
 
 ---
 
@@ -131,7 +138,7 @@ status: active | superseded | archived | draft
 ---
 ```
 
-`memex/scripts/extract-graph.py` parses these into `memory/.graph.md` at session-end.
+`memex/skills/lint/scripts/extract-graph.py` parses these into `memory/.graph.md` at session-end.
 
 ---
 

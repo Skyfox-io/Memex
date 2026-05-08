@@ -29,15 +29,10 @@ If `_MANIFEST.md` is missing, tell the user "Memex isn't initialized in this wor
 
 ## Step 2: Search
 
-Resolve `sources.py`:
-
-1. `${CLAUDE_PLUGIN_ROOT}/scripts/sources.py` (if set)
-2. `${CLAUDE_SKILL_DIR}/../../scripts/sources.py` (fallback)
-
-Run:
+Run `${CLAUDE_SKILL_DIR}/scripts/sources.py`:
 
 ```bash
-python3 <sources.py> search-local "<query>" --workspace "$WORKSPACE_ROOT"
+python3 "${CLAUDE_SKILL_DIR}/scripts/sources.py" search-local "<query>" --workspace "$WORKSPACE_ROOT"
 ```
 
 The script greps `_MANIFEST.md` plus every `_CLOSETS.md` and `_CLOSETS-archive.md` under the workspace. Output is grouped by folder.

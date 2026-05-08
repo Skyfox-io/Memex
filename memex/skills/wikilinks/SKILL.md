@@ -22,10 +22,10 @@ Run `WORKSPACE_ROOT=$(pwd) && echo "$WORKSPACE_ROOT"` via Bash.
 
 ## Step 2: Verify wikilink integrity
 
-Run `verify-wikilinks.py` (path resolution as in [session-end](../session-end/SKILL.md) Step 8a):
+Run the script at `${CLAUDE_SKILL_DIR}/scripts/verify-wikilinks.py`:
 
 ```bash
-python3 [script-path] "$WORKSPACE_ROOT" --skip .claude .obsidian .git
+python3 "${CLAUDE_SKILL_DIR}/scripts/verify-wikilinks.py" "$WORKSPACE_ROOT" --skip .claude .obsidian .git
 ```
 
 If the script can't be found, report: "Wikilink script not found - skipping." Do not silently pass.
@@ -53,7 +53,7 @@ Offer fixes:
 Re-run the script with `--suggest`:
 
 ```bash
-python3 [script-path] "$WORKSPACE_ROOT" --suggest --skip .claude .obsidian .git
+python3 "${CLAUDE_SKILL_DIR}/scripts/verify-wikilinks.py" "$WORKSPACE_ROOT" --suggest --skip .claude .obsidian .git
 ```
 
 Scans markdown for plain-text mentions of existing filenames that aren't already `[[wrapped]]`. Handles exact and hyphenated-to-space matches. Skips code blocks, URLs, and frontmatter.
@@ -92,7 +92,7 @@ Obsidian graph: [count] nodes, [count] edges
 
 ## Gotchas
 
-- **Script missing → hard stop, not silent pass.** If neither resolution path finds `verify-wikilinks.py`, surface "Wikilink script not found - skipping." Reporting "0 broken" without a script run is a lie.
+- **Script missing → hard stop, not silent pass.** If `${CLAUDE_SKILL_DIR}/scripts/verify-wikilinks.py` can't be found, surface "Wikilink script not found - skipping." Reporting "0 broken" without a script run is a lie.
 - **Short-filename false positives in `--suggest`.** Filenames ≤3 chars match common words (e.g., `api.md` matches every "API" in prose). Always review one-by-one before bulk-applying.
 - **Inline code (single backticks) is not stripped.** Triple-fenced code blocks and URLs are excluded, but a backticked filename like "filename.md" in running prose can produce phantom suggestions.
 - **Skip list is not exhaustive.** Default skips: `.claude/`, `.obsidian/`, `.git/`. Vendored deps, build outputs, or `node_modules/` need extra `--skip` flags or you'll get noise.

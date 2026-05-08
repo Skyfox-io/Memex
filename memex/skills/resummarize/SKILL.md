@@ -84,7 +84,7 @@ If absent, add as the second comment line, immediately under `<!-- memex-managed
 
 ## Step 4: Verify, record the run, and report
 
-Run `verify-wikilinks.py` (path resolution as in [session-end](../session-end/SKILL.md) Step 8a) to confirm no links broke during the rewrite.
+Run `${CLAUDE_SKILL_DIR}/scripts/verify-wikilinks.py` against the workspace to confirm no links broke during the rewrite.
 
 Append to `memory/.resummarize-runs.log`:
 

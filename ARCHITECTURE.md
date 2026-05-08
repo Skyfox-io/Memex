@@ -68,7 +68,7 @@ Optional YAML frontmatter on any file (`supersedes`, `superseded-by`, `blocks`, 
 
 The graph is purely additive. Opt in by adding frontmatter to any file, opt out by removing it. Lint surfaces dangling typed edges (a file references `supersedes: [[old-decision]]` but `old-decision.md` doesn't exist).
 
-Schema: see [CONTRIBUTING.md](CONTRIBUTING.md#frontmatter-schema). Extractor: `memex/scripts/extract-graph.py`.
+Schema: see [CONTRIBUTING.md](CONTRIBUTING.md#frontmatter-schema). Extractor: `memex/skills/lint/scripts/extract-graph.py` (also co-located with `consolidate` and `reindex` skills).
 
 ---
 
