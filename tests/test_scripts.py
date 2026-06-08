@@ -84,6 +84,36 @@ def test_verify_wikilinks_broken():
         assert "ghost" in out
 
 
+def test_verify_wikilinks_dotted_filenames():
+    """Links to files with dots in the name (not just .md) must resolve.
+
+    Regression: os.path.splitext('v1.2.3') -> 'v1.2' falsely flagged these broken.
+    """
+    with tempfile.TemporaryDirectory() as d:
+        p = Path(d)
+        (p / "notes.md").write_text(
+            "# Notes\nSee [[v1.2.3-release]], [[config.local]], and [[plain]]."
+        )
+        (p / "v1.2.3-release.md").write_text("# Release")
+        (p / "config.local.md").write_text("# Config")
+        (p / "plain.md").write_text("# Plain")
+        out = run([sys.executable, str(VERIFY), str(p)])
+        assert "CLEAN" in out
+
+
+def test_verify_wikilinks_closets_dotted_filenames():
+    """Closet headings pointing at dotted filenames must resolve too."""
+    with tempfile.TemporaryDirectory() as d:
+        p = Path(d)
+        (p / "v1.2.3-release.md").write_text("# Release")
+        (p / "_CLOSETS.md").write_text(
+            "# Closets: test\n<!-- memex-closets:1.1 -->\n\n"
+            "## [[v1.2.3-release]]\n- subjects: foo\n"
+        )
+        out = run([sys.executable, str(VERIFY), str(p)])
+        assert "missing file" not in out
+
+
 def test_verify_wikilinks_closets_dangling():
     with tempfile.TemporaryDirectory() as d:
         p = Path(d)
@@ -267,6 +297,8 @@ def main_standalone():
     tests = [
         ("verify_wikilinks_clean", test_verify_wikilinks_clean),
         ("verify_wikilinks_broken", test_verify_wikilinks_broken),
+        ("verify_wikilinks_dotted_filenames", test_verify_wikilinks_dotted_filenames),
+        ("verify_wikilinks_closets_dotted_filenames", test_verify_wikilinks_closets_dotted_filenames),
         ("verify_wikilinks_closets_dangling", test_verify_wikilinks_closets_dangling),
         ("verify_wikilinks_closets_archive_dangling", test_verify_wikilinks_closets_archive_dangling),
         ("verify_wikilinks_closets_archive_clean", test_verify_wikilinks_closets_archive_clean),

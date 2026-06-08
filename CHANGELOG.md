@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.1.3] - 2026-06-08
+
+Bug fix: wikilink targets containing dots are no longer reported as broken.
+
+### Fixed
+
+- `verify-wikilinks.py` resolved link stems with `os.path.splitext`, which truncated dotted names (`[[v1.2.3]]` → `v1.2`) and falsely flagged them as broken — in both the broken-link and closets checks. Stems now strip only a trailing `.md`, so filenames with internal dots resolve correctly.
+
 ## [2.1.2] - 2026-05-07
 
 Skill architecture change: scripts now live in their consuming skill folders.

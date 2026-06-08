@@ -70,6 +70,16 @@ def _is_closets_file(rel):
     return base == "_CLOSETS.md" or base == "_CLOSETS-archive.md"
 
 
+def _link_stem(name):
+    """Drop an optional trailing .md from a wikilink target, preserving dots.
+
+    os.path.splitext mangles dotted names like 'v1.2.3' -> 'v1.2'; wikilinks
+    only ever carry an optional '.md' suffix, so strip exactly that and nothing
+    else. Keeps filenames with internal dots (e.g. 'config.local') resolvable.
+    """
+    return name[:-3] if name.lower().endswith(".md") else name
+
+
 def find_broken_links(workspace, all_files, known_stems, known_paths, skip_prefixes):
     """Find all broken wikilinks in markdown files."""
     broken = []
@@ -99,7 +109,7 @@ def find_broken_links(workspace, all_files, known_stems, known_paths, skip_prefi
             link_lower = link.lower()
 
             if "/" in link:
-                stem = os.path.splitext(os.path.basename(link))[0].lower()
+                stem = _link_stem(os.path.basename(link)).lower()
                 if (
                     stem in known_stems
                     or link_lower in known_paths
@@ -108,7 +118,7 @@ def find_broken_links(workspace, all_files, known_stems, known_paths, skip_prefi
                     continue
                 broken.append((rel, link))
             else:
-                stem = os.path.splitext(link)[0].lower()
+                stem = _link_stem(link).lower()
                 if stem in known_stems:
                     continue
                 broken.append((rel, link))
@@ -297,7 +307,7 @@ def find_closets_issues(workspace, all_files, known_stems, skip_prefixes):
             m = re.match(r"##\s+\[\[([^\]|]+?)(?:\|[^\]]*)?\]\]\s*$", line.strip())
             if not m:
                 continue
-            stem = os.path.splitext(m.group(1).strip())[0].lower()
+            stem = _link_stem(m.group(1).strip()).lower()
             if stem not in known_stems:
                 issues.append((rel, line_num, f"closet entry [[{m.group(1).strip()}]] points to missing file"))
     return issues
