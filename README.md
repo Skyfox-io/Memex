@@ -2,7 +2,7 @@
 
 **Structured memory for Claude Cowork. Pick up where you left off.**
 
-![Version](https://img.shields.io/badge/version-2.1.1-blue)
+![Version](https://img.shields.io/badge/version-2.1.3-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
 > Persistent memory across Cowork sessions in pure markdown. The closets-format index matches full-content keyword search on retrieval recall at roughly 1/10th the size, with zero external dependencies. No database, no API keys, no embeddings backend.
