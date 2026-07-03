@@ -1,5 +1,33 @@
 # Changelog
 
+## [2.2.0] - 2026-07-04
+
+All additions are backward-compatible and preserve the six moat gates: no new required dependencies, no server, no cloud, no new mandatory config, markdown-canonical, and zero breaking changes to the workspace format or session lifecycle.
+
+### Added
+
+- **Built-in similarity search layer.** New `memex/skills/search/scripts/semantic.py` supplements grep with a scored ranking pass over closets entries, out of the box, zero installs — this is what makes it usable in cloud Cowork sandboxes, where `pip install`-ing an embeddings backend isn't viable. The default engine is pure stdlib: BM25-style scoring (IDF + tf saturation) with fuzzy credit for morphological variants (`fundraiser` ~ `fundraising` via prefix/near-miss matching), always available, no cache needed. If `sentence-transformers` is already importable in the environment (e.g. a local dev machine), the script silently upgrades to embedding-based cosine similarity for true synonym/paraphrase matching — nothing to install, nothing to configure, nothing suggested if it's absent. Embedding-mode cache lives at `memory/.semantic-cache/` — derived and disposable; markdown stays canonical (safe to delete, rebuilds on next query). Lexical mode writes nothing to disk.
+
+- **Typed-edge graph in retrieval.** `sources.py` `_search_workspace()` now greps `memory/.graph.md`, so both `/memex:search` and `/memex:cross-search` surface typed edges (people / supersedes / blocks) alongside grep results. Session-start's entity-naming opening messages also grep `.graph.md` before choosing files, using typed edges as hint signals for warm-start retrieval.
+
+- **Deterministic closets-archive fallback.** Session-start's soft "seems like it lives in this hub" archive check replaced with a mechanical `find -exec grep` sweep across every `_CLOSETS-archive.md` on a primary-closets miss. Soft failures become guaranteed cheap fallback checks.
+
+- **Session skill token diet (~28%).** `session-start/SKILL.md` 10,343 → ~7,400 bytes; `session-end/SKILL.md` 14,387 → ~10,500 bytes via progressive disclosure. New references: `session-start/references/workspace-modes.md`, `session-end/references/log-rotation.md`, `session-end/references/legacy-hubs.md`. Conditional paths moved to references loaded only when triggered. No behavior removed; per-session fixed instruction overhead cut.
+
+### Changed
+
+- **Typed-edge graph is now part of the retrieval surface.** Previously informational-only (built by reindex/consolidate, checked by lint, never consulted at recall time); now actively used by `/memex:search`, `/memex:cross-search`, and session-start entity hints.
+
+### Tests
+
+- Added `test_sources_search_local_includes_graph`: `search-local` greps `memory/.graph.md`.
+- Added `test_semantic_check_reports_engine`: `semantic.py check` reports the active engine, exit 0.
+- Added `test_semantic_lexical_ranking`: `semantic.py query --engine lexical` ranks the matching entry above an unrelated one.
+- Added `test_semantic_lexical_fuzzy_variant`: a morphological variant (`fundraiser` for an entry containing `fundraising`) still hits via prefix credit.
+- Added `test_semantic_lexical_no_match`: irrelevant query terms produce the no-hits line, not a crash.
+
+Total: 18 tests in `tests/test_scripts.py`, all green — including in a bare stdlib environment with no `sentence-transformers` installed (this is what CI runs).
+
 ## [2.1.3] - 2026-06-08
 
 Bug fix: wikilink targets containing dots are no longer reported as broken.

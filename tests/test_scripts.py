@@ -29,6 +29,8 @@ SKILLS = ROOT / "memex" / "skills"
 VERIFY = SKILLS / "wikilinks" / "scripts" / "verify-wikilinks.py"
 EXTRACT = SKILLS / "lint" / "scripts" / "extract-graph.py"
 SOURCES = SKILLS / "cross-search" / "scripts" / "sources.py"
+# semantic.py is a single copy (built-in similarity layer, search-only) — no mirrors to enforce.
+SEMANTIC = SKILLS / "search" / "scripts" / "semantic.py"
 
 # Full mirror map: owner copy -> list of consuming-skill copies that must match.
 SCRIPT_MIRRORS = {
@@ -256,6 +258,101 @@ def test_sources_search_local_groups_by_folder(tmp_home_for_sources):
         assert "Total hits" in result.stdout
 
 
+def test_sources_search_local_includes_graph(tmp_home_for_sources):
+    """search-local should grep memory/.graph.md too — typed-edge hits."""
+    with tempfile.TemporaryDirectory() as ws:
+        ws_path = Path(ws)
+        (ws_path / "_MANIFEST.md").write_text("# m\n")
+        (ws_path / "memory").mkdir()
+        (ws_path / "memory" / ".graph.md").write_text(
+            "# Memex Typed-Edge Graph\n\n"
+            "### [[decision-1]]\n- `people` → [[QuizzicalNarwhal42]]\n"
+        )
+        result = subprocess.run(
+            [sys.executable, str(SOURCES), "search-local", "QuizzicalNarwhal42", "--workspace", ws],
+            capture_output=True, text=True,
+        )
+        assert result.returncode == 0
+        assert "QuizzicalNarwhal42" in result.stdout
+        assert ".graph.md" in result.stdout
+
+
+# --- semantic.py -------------------------------------------------------
+
+def test_semantic_check_reports_engine():
+    """`check` must never traceback and must report which engine is active."""
+    result = subprocess.run(
+        [sys.executable, str(SEMANTIC), "check"],
+        capture_output=True, text=True, timeout=30,
+    )
+    assert result.returncode == 0, (
+        f"unexpected exit {result.returncode}\nstdout={result.stdout}\nstderr={result.stderr}"
+    )
+    assert "Traceback" not in result.stderr
+    assert "engine:" in result.stdout
+
+
+def _write_fundraising_workspace(ws_path: Path) -> None:
+    (ws_path / "_MANIFEST.md").write_text("# m\n")
+    (ws_path / "programs").mkdir()
+    (ws_path / "programs" / "_CLOSETS.md").write_text(
+        "# Closets: programs\n<!-- memex-closets:1.1 -->\n"
+        "## [[gala-planning]]\n- subjects: fundraising gala logistics and venue\n"
+    )
+    (ws_path / "memory").mkdir()
+    (ws_path / "memory" / "_CLOSETS.md").write_text(
+        "# Closets: memory\n<!-- memex-closets:1.1 -->\n"
+        "## [[status]]\n- subjects: quarterly planning check-in\n"
+    )
+
+
+def test_semantic_lexical_ranking():
+    """query --engine lexical must rank the matching entry above the unrelated one."""
+    with tempfile.TemporaryDirectory() as ws:
+        ws_path = Path(ws)
+        _write_fundraising_workspace(ws_path)
+        result = subprocess.run(
+            [sys.executable, str(SEMANTIC), "query", "fundraising gala", "--workspace", ws, "--engine", "lexical"],
+            capture_output=True, text=True, timeout=30,
+        )
+        assert result.returncode == 0, (
+            f"unexpected exit {result.returncode}\nstdout={result.stdout}\nstderr={result.stderr}"
+        )
+        assert "gala-planning" in result.stdout
+        assert "[[status]]" not in result.stdout
+        assert "engine: lexical" in result.stdout
+
+
+def test_semantic_lexical_fuzzy_variant():
+    """A morphological variant (fundraiser vs fundraising) should still hit via prefix credit."""
+    with tempfile.TemporaryDirectory() as ws:
+        ws_path = Path(ws)
+        _write_fundraising_workspace(ws_path)
+        result = subprocess.run(
+            [sys.executable, str(SEMANTIC), "query", "fundraiser", "--workspace", ws, "--engine", "lexical"],
+            capture_output=True, text=True, timeout=30,
+        )
+        assert result.returncode == 0, (
+            f"unexpected exit {result.returncode}\nstdout={result.stdout}\nstderr={result.stderr}"
+        )
+        assert "gala-planning" in result.stdout
+
+
+def test_semantic_lexical_no_match():
+    """Irrelevant query terms should produce the no-hits line, not a crash."""
+    with tempfile.TemporaryDirectory() as ws:
+        ws_path = Path(ws)
+        _write_fundraising_workspace(ws_path)
+        result = subprocess.run(
+            [sys.executable, str(SEMANTIC), "query", "xylophone zeppelin", "--workspace", ws, "--engine", "lexical"],
+            capture_output=True, text=True, timeout=30,
+        )
+        assert result.returncode == 0, (
+            f"unexpected exit {result.returncode}\nstdout={result.stdout}\nstderr={result.stderr}"
+        )
+        assert "No similarity matches" in result.stdout
+
+
 # --- script drift (owner copy vs mirrors) ---------------------------------
 
 def test_scripts_no_drift():
@@ -317,6 +414,16 @@ def main_standalone():
         with tempfile.TemporaryDirectory() as home:
             test_sources_search_local_groups_by_folder(Path(home))
     tests.append(("sources_search_local_groups_by_folder", run_sources_search_local_test))
+
+    def run_sources_search_local_graph_test():
+        with tempfile.TemporaryDirectory() as home:
+            test_sources_search_local_includes_graph(Path(home))
+    tests.append(("sources_search_local_includes_graph", run_sources_search_local_graph_test))
+
+    tests.append(("semantic_check_reports_engine", test_semantic_check_reports_engine))
+    tests.append(("semantic_lexical_ranking", test_semantic_lexical_ranking))
+    tests.append(("semantic_lexical_fuzzy_variant", test_semantic_lexical_fuzzy_variant))
+    tests.append(("semantic_lexical_no_match", test_semantic_lexical_no_match))
 
     failures = 0
     for name, fn in tests:

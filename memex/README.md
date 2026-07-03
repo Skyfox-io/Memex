@@ -41,7 +41,7 @@ Empty workspace? Init scaffolds in under 30 seconds. Existing files? Init scans 
 | `/memex:resummarize` | Refresh manifest + hub summaries to current retrieval-tuned format |
 | `/memex:reindex` | Backfill or rebuild every hub's `_CLOSETS.md` (and `memory/_CLOSETS.md`) |
 | `/memex:consolidate` | Dedup, decisions contradictions, orphan check, decisions compression (independent of session-end) |
-| `/memex:search` | Cross-hub search within the current workspace |
+| `/memex:search` | Cross-hub search within the current workspace; typed edges + built-in similarity matching |
 | `/memex:link-workspace` | Register the current workspace in the global source registry |
 | `/memex:unlink-workspace` | Deregister a workspace from the global source registry |
 | `/memex:cross-search` | Grep across linked workspaces' manifests + closets |
