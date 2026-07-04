@@ -18,6 +18,9 @@ All additions are backward-compatible and preserve the six moat gates: no new re
 
 - **Typed-edge graph is now part of the retrieval surface.** Previously informational-only (built by reindex/consolidate, checked by lint, never consulted at recall time); now actively used by `/memex:search`, `/memex:cross-search`, and session-start entity hints.
 
+- **Frontmatter description optimization.** Autonomous-skill descriptions (session-start, session-end, update, idea, lint, cross-search — the six loaded into model context every session) rewritten for firing precision: what it does, when to fire, and an explicit negative trigger where overfire risk exists, replacing vague heuristics like "feels out of sync." Explicit-only skill descriptions (the 11 gated by `disable-model-invocation`) rewritten as concise user-facing menu text, since they never enter model context. Lint's body prose tightened via the same technique as the session-end token diet; its check count corrected to nine (header previously said eight).
+- **Conditional session hooks.** The SessionStart/SessionEnd hook prompts now check for `_MANIFEST.md` before invoking the session skills. In workspaces that don't use Memex, the hook is a near-zero-cost no-op instead of loading the full session-start skill just to discover there's no manifest. Prompt-type hooks were kept deliberately: a shell command hook would be cheaper still, but hook shell selection on Windows is not reliably POSIX (Git Bash vs PowerShell), and a silently failing hook would disable the entire session lifecycle for those users.
+
 ### Tests
 
 - Added `test_sources_search_local_includes_graph`: `search-local` greps `memory/.graph.md`.

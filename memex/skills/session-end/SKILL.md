@@ -2,10 +2,8 @@
 name: session-end
 description: >
   Use when closing a Memex session: at the SessionEnd hook, when a session is about to
-  time out, when the hook didn't fire, or to force a clean checkpoint before a long break.
-  Updates status.md, appends session-log entry, refreshes hub summaries and touched
-  `_CLOSETS.md` entries, verifies wikilinks, scopes a wikilink suggest pass to files
-  modified this session.
+  time out, when the hook didn't fire, or to force a clean checkpoint before a long
+  break. Updates memory files, refreshes closets, verifies wikilinks.
 ---
 
 # Memex - Session End

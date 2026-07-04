@@ -1,11 +1,9 @@
 ---
 name: resummarize
 description: >
-  Refresh manifest and hub summaries to v2 retrieval-tuned format. Use when
-  upgrading from v1 (where summaries described topics) to v2 (where summaries
-  enumerate distinct subjects, name entities, and quote user-stated facts
-  verbatim), or after large content changes where existing summaries no longer
-  reflect what's in the files.
+  Refreshes manifest and hub summaries to the v2 retrieval-tuned format --
+  enumerated subjects, named entities, verbatim user-stated facts -- replacing
+  the topic-only v1 style, or catching up summaries after large content changes.
 argument-hint: "[--force]"
 disable-model-invocation: true
 ---

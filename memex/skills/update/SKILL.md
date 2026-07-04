@@ -1,13 +1,10 @@
 ---
 name: update
 description: >
-  Mid-session checkpoint: flush current status and decisions to memory without writing a
-  session-log entry, hub updates, or wikilink checks. Use only when the user explicitly asks
-  to checkpoint: phrases like "update memory", "checkpoint progress", "save status",
-  "/memex:update", or directly after a significant decision the user wants persisted before
-  stepping away. Do NOT fire on every shift in conversation or whenever your own context
-  feels heavy; that's not a checkpoint trigger. For a clean close, use `/memex:session-end`
-  instead.
+  Mid-session checkpoint: status/decisions only, no session-log, hub updates, or wikilink
+  checks. Use on an explicit checkpoint ("update memory", "checkpoint progress", "save
+  status", `/memex:update`) or after a significant decision before stepping away. Not for
+  every topic shift or heavy-context moment. For a clean close, use `/memex:session-end`.
 ---
 
 # Memex - Update

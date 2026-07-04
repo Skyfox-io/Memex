@@ -1,17 +1,9 @@
 ---
 name: search
 description: >
-  Cross-hub search within the current workspace. Greps `_MANIFEST.md`, every
-  hub's `_CLOSETS.md` / `_CLOSETS-archive.md`, `memory/_CLOSETS.md`, and
-  `memory/.graph.md` (typed-edge graph, if present). Results are grouped by
-  folder so cross-domain queries (e.g., "everywhere I mentioned Airtable",
-  "decisions touching the spring campaign") surface every hub that has a
-  hit. A built-in similarity pass supplements grep with fuzzy/paraphrase
-  matching. Use when the question spans hubs, when you don't know which
-  hub owns the answer, or when grep across the index files is the right
-  tool. For cross-workspace search, use
-  `/memex:cross-search`. Reads only manifest, closets, and graph — never
-  inside individual files.
+  Cross-hub index search within the current workspace: manifest, closets, and the
+  typed-edge graph, grouped by folder, with a built-in similarity pass for
+  fuzzy/paraphrase matches. For cross-workspace search, use `/memex:cross-search`.
 argument-hint: "<query>"
 disable-model-invocation: true
 ---

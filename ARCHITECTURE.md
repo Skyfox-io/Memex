@@ -231,7 +231,7 @@ Memex is a Claude Cowork plugin with 17 skills, split by autonomous-invocation p
 | `link-workspace` | Register the current workspace in the global source registry |
 | `unlink-workspace` | Deregister a workspace from the global source registry |
 
-Skills are namespaced under `memex:`. Hooks fire `session-start` and `session-end` automatically (configured in `memex/hooks/hooks.json`). CLAUDE.md contains three lines: session-start invocation, session-end invocation, and the wikilink format rule. All logic lives in the skills.
+Skills are namespaced under `memex:`. Hooks fire `session-start` and `session-end` automatically in Memex-initialized workspaces (configured in `memex/hooks/hooks.json`); the hook prompts check for `_MANIFEST.md` first, so workspaces that don't use Memex pay a near-zero no-op instead of a full skill load. Prompt-type hooks are deliberate — command hooks would be cheaper but Windows hook shell selection isn't reliably POSIX, and a silently failing hook would disable the whole lifecycle. CLAUDE.md contains three lines: session-start invocation, session-end invocation, and the wikilink format rule. All logic lives in the skills.
 
 Bulk-write skills (`consolidate`, `reindex`, `resummarize`, `upgrade`) share a locking convention. See [`memex/skills/consolidate/references/locking.md`](memex/skills/consolidate/references/locking.md).
 

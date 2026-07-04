@@ -1,57 +1,46 @@
 ---
 name: lint
 description: >
-  Audit workspace structural health -- stale status.md, unannotated superseded decisions,
-  orphan files (on disk but not in any hub), stale blockers, dangling typed edges, manifest
-  drift, missing `_CLOSETS.md`, outdated summary-format version. Read-only by default; `--fix`
-  applies safe annotations. Trigger after returning from a break, before a milestone or release,
-  when something feels out of sync, when status/decisions look stale, or when the user asks
-  "is this workspace healthy". For wikilink integrity specifically, use `/memex:wikilinks`
-  -- lint does not re-scan link targets.
+  Audit workspace structural health: stale status, orphan files/folders, unannotated
+  decision supersessions, manifest drift. Read-only; `--fix` applies safe annotations.
+  Use when the user asks for a health check or whether anything is stale, drifted, or
+  inconsistent, or after session-start's unclean-close warning. Don't fire on vague
+  unease or as a routine session step -- session-start/session-end handle hygiene.
+  Wikilink targets: `/memex:wikilinks` (lint doesn't re-scan links).
 argument-hint: "[--fix]"
 ---
 
 # Memex - Lint
 
-**Wikilink rule:** When referencing any file in any markdown content you write or edit, always use `[[filename]]` wikilink format. Never use plain text filenames.
+**Wikilink rule:** Use `[[filename]]` for every file reference in markdown.
 
-Audit semantic drift and structural integrity. Read-only by default. Eight checks, one report.
+Audit drift and structural integrity, read-only by default. Nine checks, one report.
 
 ---
 
 ## Step 1: Detect workspace
 
-Run `WORKSPACE_ROOT=$(pwd) && echo "$WORKSPACE_ROOT"` via Bash.
-
-Check if `_MANIFEST.md` exists at the workspace root.
-
-- **No manifest:** "Memex is not initialized. Run `/memex:init` first." Stop.
-- **Manifest exists** (with or without `<!-- memex-managed` marker): Continue.
+Run `WORKSPACE_ROOT=$(pwd) && echo "$WORKSPACE_ROOT"` via Bash, then check for `_MANIFEST.md`: missing -- "Memex is not initialized. Run `/memex:init` first." Stop. Present (with or without `<!-- memex-managed` marker) -- continue.
 
 ---
 
 ## Step 2: Read manifest
 
-Read `_MANIFEST.md`. Parse:
+Parse `_MANIFEST.md`: Tier 1 table (always-loaded files), Tier 2 sections (domain hub references), Tier 3 table (archived files), Hub Map (domain-to-hub mapping).
 
-- **Tier 1 table** -- always-loaded files with paths
-- **Tier 2 sections** -- domain sections with hub references
-- **Tier 3 table** -- archived files
-- **Hub Map** -- domain-to-hub mapping
-
-Resolve paths via: Config table (if present) > convention (`memory/`) > search.
+Resolve paths via: config table (if present) > convention (`memory/`) > search.
 
 ---
 
 ## Step 3: Run checks
 
-Execute each check in order. Collect findings as `WARN` (actionable) or `INFO` (observational).
+Run checks in order, collecting `WARN` (actionable) or `INFO` (observational) findings.
 
 ### 3.1 Status Freshness
 
-Read `status.md`. Parse the `Last updated: YYYY-MM-DD` line.
+Read `status.md`'s `Last updated: YYYY-MM-DD` line.
 
-- **WARN** if more than 3 days old. Include the exact date and day count.
+- **WARN** if more than 3 days old (include exact date and day count).
 - **PASS** if 3 days or fewer.
 - **WARN** if no `Last updated` line at all.
 
@@ -61,20 +50,20 @@ Read `decisions.md` in full. Scan newer entries for override language referencin
 
 > supersedes, replaces, dropped, no longer, instead of, reverses, overrides
 
-For each match, check whether the older entry being referenced is annotated with `~~strikethrough~~`.
+Flag each match whose referenced older entry isn't annotated with `~~strikethrough~~`.
 
 - **WARN** for each unannotated superseded entry. Include both old and new text.
 - **PASS** if no unannotated contradictions found.
 
-Do not infer contradictions from topical similarity. Only flag entries where the override relationship is explicit.
+Only flag explicit override relationships -- don't infer contradictions from topical similarity.
 
 ### 3.3 Orphan Files
 
 For each domain in the Hub Map:
 
-1. Determine the source of truth for the domain:
-   - **Closets-only hub** (v2.1+): `<hub-folder>/_CLOSETS.md`. Parse `## [[stem]]` headings; those are the registered members.
-   - **Legacy hub** (with `[domain]-index.md`): parse the hub's file table for `[[wikilinks]]`. Treat the union of table entries and closets entries as registered.
+1. Source of truth for the domain:
+   - **Closets-only hub** (v2.1+): parse `<hub-folder>/_CLOSETS.md`'s `## [[stem]]` headings as registered members.
+   - **Legacy hub** (with `[domain]-index.md`): registered = union of the file table's `[[wikilinks]]` and closets entries.
 2. List all `.md` files on disk in that domain's folder, excluding the hub index (if any), `_CLOSETS.md`, and `_CLOSETS-archive.md`.
 3. Compare.
 
@@ -82,62 +71,51 @@ For each domain in the Hub Map:
 - **INFO** for each registered entry pointing to a missing file.
 - **PASS** if all files match.
 
-Skip `memory/` and `scratch/` -- Tier 1, managed by manifest, not hubs.
+Skip `memory/`, `scratch/` -- Tier 1, managed by manifest, not hubs.
 
 ### 3.3a Orphan Folders
 
-Scan workspace-root subdirectories. For each subdirectory:
+For each workspace-root subdirectory, skip: known infrastructure paths (`.git`, `.claude`, `.obsidian`, `.memex`, `memex`, `node_modules`, `__pycache__`, `.venv`, `venv`, `dist`, `build`); known Memex folders (`memory`, `scratch`); existing hub folders (any Hub Map row's wikilink resolves into it); folders with zero `.md` files. Whatever's left is an orphan folder.
 
-1. Skip if it's a known infrastructure path: `.git`, `.claude`, `.obsidian`, `.memex`, `memex`, `node_modules`, `__pycache__`, `.venv`, `venv`, `dist`, `build`.
-2. Skip if it's a known Memex folder: `memory`, `scratch`.
-3. Skip if it's already a hub folder (any Hub Map row's wikilink resolves into it).
-4. Skip if it contains zero `.md` files.
-
-Whatever's left is an orphan folder.
-
-- **WARN** for each orphan folder. Include file count and a one-line topic guess based on file contents. Suggest: "run `/memex:add-domain <name>` to wire it up."
+- **WARN** for each orphan folder. Include file count and a one-line topic guess based on file contents.
 - **PASS** if no orphan folders.
 
 ### 3.4 Stale Blockers
 
-Read `status.md`'s `## Blocked` (or `## What's Blocked`) section. For each item:
-
-1. Read `session-log.md` (all entries).
-2. Search for mentions of the blocker text or close paraphrases.
-3. Count how many sessions mention it without resolution.
+Read `status.md`'s `## Blocked` (or `## What's Blocked`) section; for each item, count sessions in `session-log.md` (all entries) mentioning the blocker text or close paraphrases, unresolved.
 
 - **WARN** if a blocker appears unchanged across ≥ 3 session-log entries OR has been present > 7 days based on session dates.
 - **PASS** if no stale blockers, or `Blocked` is empty / says "None".
 
 ### 3.5 Closets Coverage
 
-For each `[[*-index]]` row in the Hub Map, check whether `<hub-folder>/_CLOSETS.md` exists. Also check whether `memory/_CLOSETS.md` exists.
+For each `[[*-index]]` row in the Hub Map, check whether `<hub-folder>/_CLOSETS.md` exists; also check `memory/_CLOSETS.md`.
 
-- **WARN** for each hub missing `_CLOSETS.md`. Suggest: "run `/memex:reindex` to backfill."
-- **WARN** if `memory/_CLOSETS.md` is missing on a `memex-managed:2.1.x` or newer workspace. Suggest: "run `/memex:reindex --hub memory`."
-- **PASS** if every hub plus memory have closets.
+- **WARN** for each hub missing `_CLOSETS.md`.
+- **WARN** if `memory/_CLOSETS.md` is missing on a `memex-managed:2.1.x` or newer workspace.
+- **PASS** if every hub plus memory has closets.
 
-Skip if the workspace has no `<!-- memex-managed` marker (compatible mode predates v2). For pre-2.1 workspaces, skip the memory/ check (Tier 1 closets shipped in 2.1.0).
+Skip without a `<!-- memex-managed` marker (compatible mode predates v2); also skip the memory/ check pre-2.1 (Tier 1 closets shipped in 2.1.0).
 
 ### 3.6 Typed-Edge Graph Integrity
 
-Run `${CLAUDE_SKILL_DIR}/scripts/extract-graph.py` with `--check` against the workspace. Exits 1 with dangling-edge list if any typed-edge frontmatter (`supersedes`, `superseded-by`, `blocks`, `blocked-by`, `people`, `projects`) targets a missing file.
+Run `${CLAUDE_SKILL_DIR}/scripts/extract-graph.py --check`; it exits 1 with a dangling-edge list if any typed-edge frontmatter (`supersedes`, `superseded-by`, `blocks`, `blocked-by`, `people`, `projects`) targets a missing file.
 
 - **WARN** for each dangling edge: `[[source]] <edge-type> → [[target]] (target file not found)`.
-- **PASS** if no dangling edges, OR if the script is unavailable (typed edges are opt-in -- see Gotchas), OR if no files have frontmatter.
+- **PASS** if no dangling edges, script unavailable (opt-in -- see Gotchas), or no files have frontmatter.
 
 ### 3.7 Summary Format Version
 
 Read `<!-- summary-format-version:N -->` from `_MANIFEST.md`.
 
 - **PASS** if marker says `2`.
-- **WARN** if missing or lower. Suggest: "run `/memex:resummarize` to upgrade summaries to v2."
+- **WARN** if missing or lower.
 
-Skip if the workspace has no `<!-- memex-managed` marker (compatible mode).
+Skip without a `<!-- memex-managed` marker (compatible mode).
 
 ### 3.8 Manifest Consistency
 
-For each row in the Hub Map, Tier 1 table, and Tier 3 table, verify the file exists on disk.
+Verify each Hub Map, Tier 1, and Tier 3 row's file exists on disk.
 
 - **WARN** for each missing Hub Map or Tier 1 entry.
 - **INFO** for each missing Tier 3 entry (lower priority -- archived).
@@ -224,7 +202,7 @@ Suggested next actions:
   • [if anything else looks like long-standing drift] Run /memex:consolidate for a deeper sweep (dedup, decisions contradictions, orphans, decisions compression).
 ```
 
-Only include lines whose triggering check failed. Omit the section entirely if everything passed.
+Include only lines whose check failed; omit the section entirely if everything passed.
 
 ---
 
@@ -241,20 +219,17 @@ Only include lines whose triggering check failed. Omit the section entirely if e
 - Remove orphan files from disk.
 - Remove Tier 1 entries for files that don't exist.
 
-After applying fixes, re-run all eight checks and emit an updated report.
-
-If the user didn't ask for fixes, stop after Step 5. Do not prompt.
+After applying fixes, re-run all nine checks and emit an updated report. If fixes weren't requested, stop after Step 5 -- do not prompt.
 
 ---
 
 ## Gotchas
 
-- **Read-only by default.** Without `--fix` (via `$ARGUMENTS`) or explicit user confirmation, never write a file.
-- **Not a wikilink checker.** Lint validates manifest/hub/decision structure. Broken `[[link]]` targets are out of scope -- run `/memex:wikilinks`.
-- **Orphan = "not registered in closets" (or hub table for legacy hubs).** A file with inbound `[[wikilinks]]` from across the workspace is still an orphan if its hub's closets file doesn't list it. Closets are the source of truth in v2.1+.
-- **Orphan folders are folders, not files.** ORPHAN FILES checks files inside known hub folders. ORPHAN FOLDERS checks for hub folders that don't exist in the Hub Map at all (e.g., a `morning-briefs/` directory dropped at workspace root). Both checks run on every lint.
-- **Decision-supersede detection is keyword-based.** Only flags when a newer entry literally contains "supersedes/replaces/dropped/no longer/instead of/reverses/overrides". Semantic contradictions without those phrases pass silently. False negatives over false positives by design.
-- **`extract-graph.py` missing → graph check passes silently.** Typed edges are opt-in. If `${CLAUDE_SKILL_DIR}/scripts/extract-graph.py` can't be found, the TYPED-EDGE GRAPH category reports PASS, not WARN. Don't read a passing graph check as proof the graph is healthy unless you've confirmed the script ran.
-- **Stale-blocker check needs `session-log.md`.** If session-log is missing or empty, blockers can't be aged. The check passes by default -- don't conflate that with "no stale blockers".
-- **Closets coverage check ignores compatible-mode workspaces.** Without a `<!-- memex-managed` marker, the workspace predates v2 conventions; nagging about `_CLOSETS.md` would just spam.
-- **Suggested next actions are advisory.** Lint never auto-runs `/memex:reindex`, `/memex:resummarize`, or `/memex:consolidate` -- the footer points at them so the user (or another agent) can decide.
+- **`--fix` arrives via `$ARGUMENTS`**; without it lint never writes (see Step 6).
+- **Orphan = unregistered in closets** (or hub table, legacy) -- inbound wikilinks don't exempt a file; closets are authoritative in v2.1+.
+- **3.3/3.3a are independent, both run every lint** -- FILES scans known hub folders' contents; FOLDERS finds folders missing from the Hub Map entirely.
+- **Supersede detection is keyword-based** -- flags only literal "supersedes/replaces/dropped/no longer/instead of/reverses/overrides"; false negatives over false positives by design.
+- **A missing `extract-graph.py` passes the graph check silently** (typed edges are opt-in) -- don't read PASS as proof the graph is healthy unless the script ran.
+- **Stale-blocker check needs `session-log.md`** -- missing/empty log means blockers can't be aged; passes by default -- not "no stale blockers".
+- **Compatible-mode skip (3.5/3.7)** -- no `<!-- memex-managed` marker means pre-v2; skipping avoids nagging about conventions it never adopted.
+- **Next-action suggestions are advisory** -- lint never auto-runs `/memex:reindex`, `/memex:resummarize`, or `/memex:consolidate`.

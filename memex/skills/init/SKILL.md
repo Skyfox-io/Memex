@@ -1,11 +1,9 @@
 ---
 name: init
 description: >
-  Set up Memex in the current workspace. Use when the user says "initialize memex",
-  "set up memex here", or runs /memex:init in a fresh repo, an existing repo with
-  loose markdown, a workspace with a foreign manifest, or one with an outdated Memex
-  version marker. Detects state and runs scaffold, scan-and-organize, migrate, or
-  health-check accordingly.
+  Sets up Memex in the current workspace. Detects state -- fresh repo, existing repo
+  with loose markdown, a foreign manifest, or an outdated version marker -- and runs
+  the right combination of scaffold, scan-and-organize, migrate, or health-check.
 disable-model-invocation: true
 ---
 

@@ -1,10 +1,9 @@
 ---
 name: session-start
 description: >
-  Use when opening a Memex session: at the SessionStart hook, after `/clear`, when context
-  feels stale mid-session, or when resuming after a break. Detects workspace state, scans
-  the manifest, loads tiered context (status / session-log / decisions / ideas), pre-loads
-  the relevant domain via `_CLOSETS.md`, and outputs a 30-second briefing.
+  Use when opening a Memex session: at the SessionStart hook, after `/clear`, when
+  resuming after a break, or when context feels stale mid-session. Loads tiered
+  context and outputs a briefing.
 ---
 
 # Memex - Session Start

@@ -1,11 +1,9 @@
 ---
 name: cross-search
 description: >
-  Trigger when the user's question spans multiple Memex workspaces and
-  they don't know which one holds the answer; e.g., "where did we land
-  on the spring fundraising plan?" with separate nonprofit and personal
-  workspaces, or "have I written about X anywhere?". Also use when the
-  user explicitly asks to search across linked sources. Reads only
+  Trigger when the user's question spans multiple Memex workspaces and they don't know
+  which one holds the answer, or they ask "have I written about X anywhere?". Not for
+  questions the current workspace can answer -- use `/memex:search` instead. Reads only
   manifests and closets, never inside individual files.
 argument-hint: "<query>"
 ---

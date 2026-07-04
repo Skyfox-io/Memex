@@ -1,13 +1,9 @@
 ---
 name: upgrade
 description: >
-  Upgrade an existing Memex workspace to the current major version in one
-  command. Use when the user says "upgrade memex", "migrate to v2", "bring
-  this workspace up to date", or runs `/memex:upgrade` after pulling a new
-  Memex release. Detects the workspace's current state (manifest marker,
-  summary-format-version, closets coverage) and orchestrates the right
-  subset of `/memex:resummarize`, `/memex:reindex`, and lint, without
-  re-running steps that are already current.
+  Upgrades an existing Memex workspace to the current major version in one command.
+  Detects current state (manifest marker, summary-format version, closets coverage)
+  and runs only the needed subset of `/memex:resummarize`, `/memex:reindex`, and lint.
 argument-hint: "[--dry-run] [--force]"
 disable-model-invocation: true
 ---

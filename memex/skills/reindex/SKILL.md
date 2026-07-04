@@ -1,10 +1,9 @@
 ---
 name: reindex
 description: >
-  Backfill or rebuild every hub's `_CLOSETS.md` from scratch. Use after upgrading
-  a v1 workspace to v2 (so closets exist on session 1 instead of accumulating
-  across many session-ends), after a large bulk import, or any time first-pass
-  v2 retrieval quality is needed immediately.
+  Backfills or rebuilds every hub's `_CLOSETS.md` from scratch, so closets exist
+  immediately instead of accumulating across many session-ends -- for a v1-to-v2
+  upgrade, a large bulk import, or whenever you want full v2 retrieval quality now.
 argument-hint: "[--force] [--hub <hub-name>]"
 disable-model-invocation: true
 ---
