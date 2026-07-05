@@ -1,35 +1,29 @@
 # Changelog
 
-## [2.2.0] - 2026-07-04
+## [2.2.0] - 2026-07-05
 
-All additions are backward-compatible and preserve the six moat gates: no new required dependencies, no server, no cloud, no new mandatory config, markdown-canonical, and zero breaking changes to the workspace format or session lifecycle.
+Better recall out of the box and lower per-session token cost. Everything is backward-compatible: no new required dependencies, no server, no cloud, no new mandatory config, and markdown stays canonical.
 
 ### Added
 
-- **Built-in similarity search layer.** New `memex/skills/search/scripts/semantic.py` supplements grep with a scored ranking pass over closets entries, out of the box, zero installs — this is what makes it usable in cloud Cowork sandboxes, where `pip install`-ing an embeddings backend isn't viable. The default engine is pure stdlib: BM25-style scoring (IDF + tf saturation) with fuzzy credit for morphological variants (`fundraiser` ~ `fundraising` via prefix/near-miss matching), always available, no cache needed. If `sentence-transformers` is already importable in the environment (e.g. a local dev machine), the script silently upgrades to embedding-based cosine similarity for true synonym/paraphrase matching — nothing to install, nothing to configure, nothing suggested if it's absent. Embedding-mode cache lives at `memory/.semantic-cache/` — derived and disposable; markdown stays canonical (safe to delete, rebuilds on next query). Lexical mode writes nothing to disk.
-
-- **Typed-edge graph in retrieval.** `sources.py` `_search_workspace()` now greps `memory/.graph.md`, so both `/memex:search` and `/memex:cross-search` surface typed edges (people / supersedes / blocks) alongside grep results. Session-start's entity-naming opening messages also grep `.graph.md` before choosing files, using typed edges as hint signals for warm-start retrieval.
-
-- **Deterministic closets-archive fallback.** Session-start's soft "seems like it lives in this hub" archive check replaced with a mechanical `find -exec grep` sweep across every `_CLOSETS-archive.md` on a primary-closets miss. Soft failures become guaranteed cheap fallback checks.
-
-- **Session skill token diet (~28%).** `session-start/SKILL.md` 10,343 → ~7,400 bytes; `session-end/SKILL.md` 14,387 → ~10,500 bytes via progressive disclosure. New references: `session-start/references/workspace-modes.md`, `session-end/references/log-rotation.md`, `session-end/references/legacy-hubs.md`. Conditional paths moved to references loaded only when triggered. No behavior removed; per-session fixed instruction overhead cut.
+- **Built-in similarity search.** A new `semantic.py` script in the search skill supplements grep with a scored ranking pass over closets entries. Works out of the box with zero installs:
+  - The default engine is pure stdlib: BM25-style scoring with fuzzy credit for word variants, so a search for `fundraiser` finds `fundraising`. No cache, nothing written to disk.
+  - If `sentence-transformers` is already available in the environment, the script silently upgrades to embedding-based matching for synonyms and paraphrases. Nothing to install or configure either way.
+  - Embedding mode caches at `memory/.semantic-cache/`. The cache is derived and disposable: safe to delete, rebuilds on the next query.
+- **Typed-edge graph in retrieval.** `/memex:search` and `/memex:cross-search` now include `memory/.graph.md`, surfacing typed edges (people, supersedes, blocks) alongside grep results. Session-start also checks the graph when the opening message names an entity.
+- **Deterministic closets-archive fallback.** On a primary-closets miss, session-start runs a mechanical `find` plus `grep` sweep across every `_CLOSETS-archive.md` instead of a judgment call. Silent recall misses become a guaranteed cheap fallback check.
+- **Session skill token diet (about 28%).** The session-start and session-end skill bodies are slimmer: conditional paths moved into `references/` files that load only when triggered (`workspace-modes.md`, `log-rotation.md`, `legacy-hubs.md`). No behavior removed.
 
 ### Changed
 
-- **Typed-edge graph is now part of the retrieval surface.** Previously informational-only (built by reindex/consolidate, checked by lint, never consulted at recall time); now actively used by `/memex:search`, `/memex:cross-search`, and session-start entity hints.
-
-- **Frontmatter description optimization.** Autonomous-skill descriptions (session-start, session-end, update, idea, lint, cross-search — the six loaded into model context every session) rewritten for firing precision: what it does, when to fire, and an explicit negative trigger where overfire risk exists, replacing vague heuristics like "feels out of sync." Explicit-only skill descriptions (the 11 gated by `disable-model-invocation`) rewritten as concise user-facing menu text, since they never enter model context. Lint's body prose tightened via the same technique as the session-end token diet; its check count corrected to nine (header previously said eight).
-- **Conditional session hooks.** The SessionStart/SessionEnd hook prompts now check for `_MANIFEST.md` before invoking the session skills. In workspaces that don't use Memex, the hook is a near-zero-cost no-op instead of loading the full session-start skill just to discover there's no manifest. Prompt-type hooks were kept deliberately: a shell command hook would be cheaper still, but hook shell selection on Windows is not reliably POSIX (Git Bash vs PowerShell), and a silently failing hook would disable the entire session lifecycle for those users.
+- **Skill descriptions rewritten for firing precision.** The six autonomous skills (session-start, session-end, update, idea, lint, cross-search) now state what they do, when to fire, and when not to. Explicit-only skills get concise menu-style descriptions. Fewer always-loaded tokens, fewer misfires.
+- **Conditional session hooks.** The SessionStart and SessionEnd hook prompts check for `_MANIFEST.md` before invoking the session skills, so workspaces that don't use Memex pay a near-zero no-op. Prompt-type hooks were kept deliberately: command hooks would be cheaper, but hook shell selection on Windows is not reliably POSIX, and a silently failing hook would disable the whole session lifecycle.
+- **Lint check count corrected to nine** (the header previously said eight) and its body prose tightened.
 
 ### Tests
 
-- Added `test_sources_search_local_includes_graph`: `search-local` greps `memory/.graph.md`.
-- Added `test_semantic_check_reports_engine`: `semantic.py check` reports the active engine, exit 0.
-- Added `test_semantic_lexical_ranking`: `semantic.py query --engine lexical` ranks the matching entry above an unrelated one.
-- Added `test_semantic_lexical_fuzzy_variant`: a morphological variant (`fundraiser` for an entry containing `fundraising`) still hits via prefix credit.
-- Added `test_semantic_lexical_no_match`: irrelevant query terms produce the no-hits line, not a crash.
-
-Total: 18 tests in `tests/test_scripts.py`, all green — including in a bare stdlib environment with no `sentence-transformers` installed (this is what CI runs).
+- Five new tests cover the graph in `search-local`, similarity engine reporting, lexical ranking, fuzzy variant matching, and clean no-match handling.
+- 18 tests total in `tests/test_scripts.py`, all green in a bare stdlib environment with no `sentence-transformers` installed. This matches what CI and cloud sandboxes run.
 
 ## [2.1.3] - 2026-06-08
 

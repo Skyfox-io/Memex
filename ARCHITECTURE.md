@@ -86,8 +86,8 @@ This federation is opt-in per source and read-only across the boundary. No synci
 
 Grep is the primary search path for both `/memex:search` and `/memex:cross-search`. `/memex:search` always supplements it with `semantic.py`, which runs one of two engines over the same closets-entry corpus:
 
-- **Lexical (stdlib, default).** BM25-style scoring — IDF over the corpus, tf saturation, plus fuzzy credit (prefix/near-miss token matching) for morphological variants like `fundraiser`/`fundraising`. Zero deps, no cache, works in any bare python3 sandbox including cloud Cowork.
-- **Embeddings (silent auto-upgrade).** If `sentence-transformers` is already importable, the same corpus is embedded instead (model `all-MiniLM-L6-v2`, overridable via `MEMEX_EMBED_MODEL`) for true synonym/paraphrase matching. Embeddings cache at `memory/.semantic-cache/` — derived and disposable (safe to delete; rebuilds on next query). Nothing to install, nothing to configure — the upgrade is silent in both directions.
+- **Lexical (stdlib, default).** BM25-style scoring: IDF over the corpus, tf saturation, plus fuzzy credit (prefix/near-miss token matching) for word variants like `fundraiser`/`fundraising`. Zero deps, no cache, works in any bare python3 sandbox including cloud Cowork.
+- **Embeddings (silent auto-upgrade).** If `sentence-transformers` is already importable, the same corpus is embedded instead (model `all-MiniLM-L6-v2`, overridable via `MEMEX_EMBED_MODEL`) for true synonym and paraphrase matching. Embeddings cache at `memory/.semantic-cache/`, which is derived and disposable: safe to delete, rebuilds on the next query. Nothing to install, nothing to configure; the upgrade is silent in both directions.
 
 **Zero-dependency default behavior is unchanged.** This design preserves all six moat gates: no new required dependencies, no server, no cloud, no new config, markdown-canonical, and backward-compatible.
 
@@ -231,7 +231,7 @@ Memex is a Claude Cowork plugin with 17 skills, split by autonomous-invocation p
 | `link-workspace` | Register the current workspace in the global source registry |
 | `unlink-workspace` | Deregister a workspace from the global source registry |
 
-Skills are namespaced under `memex:`. Hooks fire `session-start` and `session-end` automatically in Memex-initialized workspaces (configured in `memex/hooks/hooks.json`); the hook prompts check for `_MANIFEST.md` first, so workspaces that don't use Memex pay a near-zero no-op instead of a full skill load. Prompt-type hooks are deliberate — command hooks would be cheaper but Windows hook shell selection isn't reliably POSIX, and a silently failing hook would disable the whole lifecycle. CLAUDE.md contains three lines: session-start invocation, session-end invocation, and the wikilink format rule. All logic lives in the skills.
+Skills are namespaced under `memex:`. Hooks fire `session-start` and `session-end` automatically in Memex-initialized workspaces (configured in `memex/hooks/hooks.json`); the hook prompts check for `_MANIFEST.md` first, so workspaces that don't use Memex pay a near-zero no-op instead of a full skill load. Prompt-type hooks are deliberate: command hooks would be cheaper, but Windows hook shell selection isn't reliably POSIX, and a silently failing hook would disable the whole lifecycle. CLAUDE.md contains three lines: session-start invocation, session-end invocation, and the wikilink format rule. All logic lives in the skills.
 
 Bulk-write skills (`consolidate`, `reindex`, `resummarize`, `upgrade`) share a locking convention. See [`memex/skills/consolidate/references/locking.md`](memex/skills/consolidate/references/locking.md).
 
@@ -281,7 +281,7 @@ Gotchas are the highest-signal content for improving skill reliability over time
 
 - **No database.** Markdown is the source of truth, full stop. Earlier v2 builds shipped a `memory/.facts.db` SQLite sidecar; it was removed in v2.1.1 because closets already capture verbatim user-stated facts and decisions.md already captures supersession with stronger guarantees (always loaded, always dated, lint-checkable).
 - **No MCP server.** No running process needed.
-- **No required vector index.** No FAISS, no HNSW, no runtime embedding store needed. The closets typed-field index handles relevance; grep is the primary search path. The built-in similarity layer defaults to stdlib scoring; a local cache (`memory/.semantic-cache/`) exists only in embedding mode, when `sentence-transformers` is already present, and is derived and disposable — markdown stays canonical.
+- **No required vector index.** No FAISS, no HNSW, no runtime embedding store needed. The closets typed-field index handles relevance; grep is the primary search path. The built-in similarity layer defaults to stdlib scoring; a local cache (`memory/.semantic-cache/`) exists only in embedding mode, when `sentence-transformers` is already present, and is derived and disposable. Markdown stays canonical.
 - **No automatic cross-workspace sync.** Federation is opt-in per source and read-only across the boundary. `/memex:cross-search` greps registered workspaces, never writes.
 - **No GUI.** The visual layer is [Obsidian](https://obsidian.md/).
 - **No automatic archival.** Session-end surfaces candidates at milestones. The user decides.
