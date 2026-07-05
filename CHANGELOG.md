@@ -1,5 +1,30 @@
 # Changelog
 
+## [2.2.0] - 2026-07-05
+
+Better recall out of the box and lower per-session token cost. Everything is backward-compatible: no new required dependencies, no server, no cloud, no new mandatory config, and markdown stays canonical.
+
+### Added
+
+- **Built-in similarity search.** A new `semantic.py` script in the search skill supplements grep with a scored ranking pass over closets entries. Works out of the box with zero installs:
+  - The default engine is pure stdlib: BM25-style scoring with fuzzy credit for word variants, so a search for `fundraiser` finds `fundraising`. No cache, nothing written to disk.
+  - If `sentence-transformers` is already available in the environment, the script silently upgrades to embedding-based matching for synonyms and paraphrases. Nothing to install or configure either way.
+  - Embedding mode caches at `memory/.semantic-cache/`. The cache is derived and disposable: safe to delete, rebuilds on the next query.
+- **Typed-edge graph in retrieval.** `/memex:search` and `/memex:cross-search` now include `memory/.graph.md`, surfacing typed edges (people, supersedes, blocks) alongside grep results. Session-start also checks the graph when the opening message names an entity.
+- **Deterministic closets-archive fallback.** On a primary-closets miss, session-start runs a mechanical `find` plus `grep` sweep across every `_CLOSETS-archive.md` instead of a judgment call. Silent recall misses become a guaranteed cheap fallback check.
+- **Session skill token diet (about 28%).** The session-start and session-end skill bodies are slimmer: conditional paths moved into `references/` files that load only when triggered (`workspace-modes.md`, `log-rotation.md`, `legacy-hubs.md`). No behavior removed.
+
+### Changed
+
+- **Skill descriptions rewritten for firing precision.** The six autonomous skills (session-start, session-end, update, idea, lint, cross-search) now state what they do, when to fire, and when not to. Explicit-only skills get concise menu-style descriptions. Fewer always-loaded tokens, fewer misfires.
+- **Conditional session hooks.** The SessionStart and SessionEnd hook prompts check for `_MANIFEST.md` before invoking the session skills, so workspaces that don't use Memex pay a near-zero no-op. Prompt-type hooks were kept deliberately: command hooks would be cheaper, but hook shell selection on Windows is not reliably POSIX, and a silently failing hook would disable the whole session lifecycle.
+- **Lint check count corrected to nine** (the header previously said eight) and its body prose tightened.
+
+### Tests
+
+- Five new tests cover the graph in `search-local`, similarity engine reporting, lexical ranking, fuzzy variant matching, and clean no-match handling.
+- 18 tests total in `tests/test_scripts.py`, all green in a bare stdlib environment with no `sentence-transformers` installed. This matches what CI and cloud sandboxes run.
+
 ## [2.1.3] - 2026-06-08
 
 Bug fix: wikilink targets containing dots are no longer reported as broken.

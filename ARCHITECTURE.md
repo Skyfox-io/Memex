@@ -66,7 +66,7 @@ That's it. No SQLite, no `valid_from`/`valid_to` triples, no contradiction-detec
 
 Optional YAML frontmatter on any file (`supersedes`, `superseded-by`, `blocks`, `blocked-by`, `people`, `projects`, `type`, `status`, `date`) is parsed at session-end into `memory/.graph.md`. Pure regex; zero LLM calls; files without frontmatter contribute nothing.
 
-The graph is purely additive. Opt in by adding frontmatter to any file, opt out by removing it. Lint surfaces dangling typed edges (a file references `supersedes: [[old-decision]]` but `old-decision.md` doesn't exist).
+The graph is purely additive. Opt in by adding frontmatter to any file, opt out by removing it. The graph is now part of the retrieval surface: `/memex:search` and `/memex:cross-search` grep `.graph.md` to surface typed edges alongside grep results, and session-start uses entity hints from the graph for warm-start retrieval. Lint surfaces dangling typed edges (a file references `supersedes: [[old-decision]]` but `old-decision.md` doesn't exist).
 
 Schema: see [CONTRIBUTING.md](CONTRIBUTING.md#frontmatter-schema). Extractor: `memex/skills/lint/scripts/extract-graph.py` (also co-located with `consolidate` and `reindex` skills).
 
@@ -79,6 +79,17 @@ Multiple Memex workspaces (nonprofit / personal / work) each have their own file
 Mechanism: `~/.memex/sources.md` is a per-user global registry of `(name, path, registered, searchable)` rows. `/memex:link-workspace` adds the current workspace; `/memex:unlink-workspace` removes it; `/memex:cross-search` greps every registered source's `_MANIFEST.md`, `_CLOSETS.md`, and `_CLOSETS-archive.md`. Privacy: each source has a `searchable: true|false` flag for total per-source opt-out.
 
 This federation is opt-in per source and read-only across the boundary. No syncing, no auth, no shared state, just grep across files the user has explicitly registered.
+
+---
+
+## Built-In Similarity Layer
+
+Grep is the primary search path for both `/memex:search` and `/memex:cross-search`. `/memex:search` always supplements it with `semantic.py`, which runs one of two engines over the same closets-entry corpus:
+
+- **Lexical (stdlib, default).** BM25-style scoring: IDF over the corpus, tf saturation, plus fuzzy credit (prefix/near-miss token matching) for word variants like `fundraiser`/`fundraising`. Zero deps, no cache, works in any bare python3 sandbox including cloud Cowork.
+- **Embeddings (silent auto-upgrade).** If `sentence-transformers` is already importable, the same corpus is embedded instead (model `all-MiniLM-L6-v2`, overridable via `MEMEX_EMBED_MODEL`) for true synonym and paraphrase matching. Embeddings cache at `memory/.semantic-cache/`, which is derived and disposable: safe to delete, rebuilds on the next query. Nothing to install, nothing to configure; the upgrade is silent in both directions.
+
+**Zero-dependency default behavior is unchanged.** This design preserves all six moat gates: no new required dependencies, no server, no cloud, no new config, markdown-canonical, and backward-compatible.
 
 ---
 
@@ -220,7 +231,7 @@ Memex is a Claude Cowork plugin with 17 skills, split by autonomous-invocation p
 | `link-workspace` | Register the current workspace in the global source registry |
 | `unlink-workspace` | Deregister a workspace from the global source registry |
 
-Skills are namespaced under `memex:`. Hooks fire `session-start` and `session-end` automatically (configured in `memex/hooks/hooks.json`). CLAUDE.md contains three lines: session-start invocation, session-end invocation, and the wikilink format rule. All logic lives in the skills.
+Skills are namespaced under `memex:`. Hooks fire `session-start` and `session-end` automatically in Memex-initialized workspaces (configured in `memex/hooks/hooks.json`); the hook prompts check for `_MANIFEST.md` first, so workspaces that don't use Memex pay a near-zero no-op instead of a full skill load. Prompt-type hooks are deliberate: command hooks would be cheaper, but Windows hook shell selection isn't reliably POSIX, and a silently failing hook would disable the whole lifecycle. CLAUDE.md contains three lines: session-start invocation, session-end invocation, and the wikilink format rule. All logic lives in the skills.
 
 Bulk-write skills (`consolidate`, `reindex`, `resummarize`, `upgrade`) share a locking convention. See [`memex/skills/consolidate/references/locking.md`](memex/skills/consolidate/references/locking.md).
 
@@ -232,12 +243,13 @@ Skills that handle multiple independent paths use `references/` sub-files to kee
 
 Currently used by:
 - `init`. `references/scan-and-organize.md`, `references/health-check.md`, `references/migrations.md`, `references/post-setup-message.md` (init has four genuinely separable flows)
-- `session-end`. `references/closets-format.md` and `references/summary-rules.md` (canonical specs cited by many other skills)
+- `session-start`. `references/workspace-modes.md` (conditional paths for Memex-managed vs compatible-mode workspaces, loaded on mode detection)
+- `session-end`. `references/closets-format.md`, `references/summary-rules.md`, `references/log-rotation.md`, `references/legacy-hubs.md` (canonical specs cited by many other skills, log and legacy handling loaded conditionally)
 - `consolidate`. `references/locking.md` (genuinely shared by 4 bulk-write skills)
 - `cross-search`. `references/registry.md` (shared with link-workspace and unlink-workspace)
 - `upgrade`. `references/v1-to-v2.md`, `references/v2-to-v2_1.md` (version-specific migration playbooks; future versions add their own)
 
-Linear skills that run every step every time (`session-start`, `update`, `idea`, `archive`, `add-domain`, `link-workspace`, `unlink-workspace`, `lint`, `wikilinks`, `reindex`, `resummarize`) stay as single SKILL.md files. The cohesion pass at v2.0.0 specifically inlined `lint/references/checks.md` and `consolidate/references/phases.md` because the references *were* the skill. That's an upside-down split, not progressive disclosure.
+Linear skills that run every step every time (`update`, `idea`, `archive`, `add-domain`, `link-workspace`, `unlink-workspace`, `lint`, `wikilinks`, `reindex`, `resummarize`, `search`) stay as single SKILL.md files. The cohesion pass at v2.0.0 specifically inlined `lint/references/checks.md` and `consolidate/references/phases.md` because the references *were* the skill. That's an upside-down split, not progressive disclosure.
 
 ---
 
@@ -269,7 +281,7 @@ Gotchas are the highest-signal content for improving skill reliability over time
 
 - **No database.** Markdown is the source of truth, full stop. Earlier v2 builds shipped a `memory/.facts.db` SQLite sidecar; it was removed in v2.1.1 because closets already capture verbatim user-stated facts and decisions.md already captures supersession with stronger guarantees (always loaded, always dated, lint-checkable).
 - **No MCP server.** No running process needed.
-- **No learned vector index.** No FAISS, no HNSW, no embedding store at runtime. The closets typed-field index handles relevance.
+- **No required vector index.** No FAISS, no HNSW, no runtime embedding store needed. The closets typed-field index handles relevance; grep is the primary search path. The built-in similarity layer defaults to stdlib scoring; a local cache (`memory/.semantic-cache/`) exists only in embedding mode, when `sentence-transformers` is already present, and is derived and disposable. Markdown stays canonical.
 - **No automatic cross-workspace sync.** Federation is opt-in per source and read-only across the boundary. `/memex:cross-search` greps registered workspaces, never writes.
 - **No GUI.** The visual layer is [Obsidian](https://obsidian.md/).
 - **No automatic archival.** Session-end surfaces candidates at milestones. The user decides.

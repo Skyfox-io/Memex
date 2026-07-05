@@ -154,11 +154,13 @@ def cmd_set_searchable(args):
 
 
 def _search_workspace(path: Path, query: str) -> list[str]:
-    """Grep `_MANIFEST.md` + every `_CLOSETS.md`/`_CLOSETS-archive.md` under
-    `path`. Returns grep_lines.
+    """Grep `_MANIFEST.md` + every `_CLOSETS.md`/`_CLOSETS-archive.md` +
+    `memory/.graph.md` (typed-edge graph, if present) under `path`. Returns
+    grep_lines.
     """
     targets = [
         path / "_MANIFEST.md",
+        path / "memory" / ".graph.md",
         *path.rglob("_CLOSETS.md"),
         *path.rglob("_CLOSETS-archive.md"),
     ]

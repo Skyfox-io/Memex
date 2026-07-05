@@ -1,11 +1,9 @@
 ---
 name: unlink-workspace
 description: >
-  Trigger when the user wants a Memex workspace removed from the global
-  source registry; e.g., they've archived a project, the workspace
-  moved, or they want to stop a source from showing up in
-  `/memex:cross-search` permanently. (For temporary opt-out, prefer
-  `set-searchable false` instead; see Gotchas.)
+  Removes a Memex workspace from the global source registry -- e.g. after a
+  project is archived or moved -- so it stops appearing in `/memex:cross-search`.
+  For a temporary opt-out instead, use `set-searchable false` (see Gotchas).
 argument-hint: "[source-name]"
 disable-model-invocation: true
 ---

@@ -1,11 +1,9 @@
 ---
 name: archive
 description: >
-  Move a file from active (Tier 2) to archived (Tier 3) so Memex stops loading it
-  automatically. Use when a project wraps, a reference goes stale, a file is
-  superseded by a newer version, or the user says "archive X", "retire X",
-  "stop loading X", or runs /memex:archive. The file stays on disk; only its
-  manifest tier and hub status change.
+  Moves a file from active (Tier 2) to archived (Tier 3) so Memex stops loading
+  it automatically -- for a wrapped project, a stale reference, or a superseded
+  file. The file stays on disk; only its manifest tier and hub status change.
 argument-hint: "[filename]"
 disable-model-invocation: true
 ---

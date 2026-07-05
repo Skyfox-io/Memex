@@ -5,7 +5,7 @@
         "hooks": [
           {
             "type": "prompt",
-            "prompt": "Run /memex:session-start"
+            "prompt": "If _MANIFEST.md exists at the workspace root, run /memex:session-start. If it does not exist, this workspace does not use Memex — do nothing and do not mention it."
           }
         ]
       }
@@ -15,7 +15,7 @@
         "hooks": [
           {
             "type": "prompt",
-            "prompt": "Run /memex:session-end"
+            "prompt": "If _MANIFEST.md exists at the workspace root, run /memex:session-end. If it does not exist, do nothing."
           }
         ]
       }

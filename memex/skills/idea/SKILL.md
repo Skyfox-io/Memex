@@ -1,12 +1,10 @@
 ---
 name: idea
 description: >
-  Quick-capture an idea to the scratch inbox. Use only when the user explicitly asks to capture
-  an idea: phrases like "capture this", "add to ideas", "don't let me forget", "log this idea",
-  "/memex:idea ...", or any direct request to save a side thought without breaking flow. Do NOT
-  fire on every "we should eventually..." or "what if" aside in conversation; most asides are
-  not capture-intent. Not for routed work (lives in domain hubs), decisions (lives in decisions.md),
-  or claims about state (lives in closets `claims:` field on the relevant file).
+  Quick-capture an idea to the scratch inbox. Use when the user explicitly asks to capture:
+  "capture this", "add to ideas", "don't let me forget", "log this idea", `/memex:idea`. Not
+  for every "we should eventually..." aside -- most asides aren't capture-intent. Not for
+  decisions (decisions.md) or state claims (closets `claims:` field).
 argument-hint: "[idea description]"
 ---
 

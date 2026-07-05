@@ -2,7 +2,7 @@
 
 **Structured memory for Claude Cowork. Pick up where you left off.**
 
-![Version](https://img.shields.io/badge/version-2.1.3-blue)
+![Version](https://img.shields.io/badge/version-2.2.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
 > Persistent memory across Cowork sessions in pure markdown. The closets-format index matches full-content keyword search on retrieval recall at roughly 1/10th the size, with zero external dependencies. No database, no API keys, no embeddings backend.
@@ -21,12 +21,13 @@ Memex converts your workspace into a connected knowledge system with persistent 
 
 - **Wikilinked knowledge base.** Every file reference becomes a `[[wikilink]]`. Your workspace builds into a connected graph over time. Open it in [Obsidian](https://obsidian.md/) to see how everything relates visually.
 - **Two-tier index.** A `_MANIFEST.md` plus per-hub `_CLOSETS.md` files (and `memory/_CLOSETS.md` for Tier 1) mean Claude knows what every file contains *without opening any of them*. Field-level retrieval (subjects, people, claims, decisions, dates, status) on questions about specific subjects, not just topics.
-- **Typed-edge graph.** Optional YAML frontmatter (`supersedes`, `blocks`, `people`, `projects`) builds a typed knowledge graph. Zero LLM calls; pure regex.
+- **Typed-edge graph.** Optional YAML frontmatter (`supersedes`, `blocks`, `people`, `projects`) builds a typed knowledge graph. Zero LLM calls; pure regex. Part of the retrieval surface: `/memex:search` and `/memex:cross-search` surface typed edges alongside grep results, and session-start uses graph entity hints to warm-start retrieval.
 - **Cross-workspace federation.** Register multiple workspaces (nonprofit, personal, work) in a global registry and search across all of them with `/memex:cross-search`. Privacy-first: opt-in per source.
+- **Built-in similarity search.** `/memex:search` supplements grep with a scored fuzzy/BM25-style ranking pass, out of the box with zero dependencies. Catches word variants that substring matching misses (fundraiser/fundraising). Auto-upgrades to embedding-based paraphrase matching where `sentence-transformers` already exists; no install or config needed either way.
 - **Cross-hub search within a workspace.** `/memex:search` greps the manifest plus every closets file, grouped by folder.
 - **Standalone consolidation cycle.** `/memex:consolidate` runs dedup, decisions contradictions, orphan check, and decisions compression independently from session-end, so a session timeout doesn't compound drift.
 - **Convention over configuration.** Drop files in standard locations and they just work. No config tables to maintain.
-- **Zero dependencies.** Markdown files plus stdlib Python. No database server, no API keys, no embeddings backend, no cloud.
+- **Zero dependencies.** Markdown files plus stdlib Python. No database server, no API keys, no required embeddings backend, no cloud.
 
 ### Retrieval benchmark
 
@@ -160,7 +161,7 @@ Closets are pointers, not load triggers. Listing 12 files in `_CLOSETS.md` does 
 | Skill | What it does |
 |-------|-------------|
 | `/memex:init` | Set up, adopt, health-check, or upgrade a workspace |
-| `/memex:upgrade` | One-command migration orchestrator (v1→v2, v2.0→v2.1, future versions); idempotent on re-run |
+| `/memex:upgrade` | One-command migration orchestrator (v1→v2, v2.0→v2.1, v2.1→v2.2, future versions); idempotent on re-run |
 | `/memex:session-start` | Briefing at session open |
 | `/memex:session-end` | Close cleanly: update memory, log decisions, refresh closets, verify links |
 | `/memex:update` | Mid-session flush: save status without closing |
@@ -172,7 +173,7 @@ Closets are pointers, not load triggers. Listing 12 files in `_CLOSETS.md` does 
 | `/memex:resummarize` | Refresh manifest + hub summaries to current retrieval-tuned format |
 | `/memex:reindex` | Backfill or rebuild every hub's `_CLOSETS.md` (and `memory/_CLOSETS.md`) |
 | `/memex:consolidate` | Run dedup, decisions contradictions, orphan check, decisions compression (independent of session-end) |
-| `/memex:search` | Cross-hub search within the current workspace: grep manifest + every `_CLOSETS.md`, grouped by folder |
+| `/memex:search` | Cross-hub search within the current workspace: grep manifest + every `_CLOSETS.md` + typed-edge graph, grouped by folder; built-in similarity pass supplements grep |
 | `/memex:link-workspace` | Register the current workspace in the global source registry |
 | `/memex:unlink-workspace` | Deregister a workspace from the global source registry |
 | `/memex:cross-search` | Grep across linked workspaces' manifests + closets |

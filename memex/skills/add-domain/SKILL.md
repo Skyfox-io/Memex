@@ -1,10 +1,8 @@
 ---
 name: add-domain
 description: >
-  Add a new domain folder with a hub index and wire it into _MANIFEST.md. Use when
-  the user says "add a domain", "create a marketing/product/research folder", or runs
-  /memex:add-domain. Also use when scan suggests an obvious new cluster of files
-  the user wants split out of an existing domain.
+  Adds a new domain folder with a hub index and wires it into `_MANIFEST.md` --
+  for a new topic area, or splitting an existing domain into its own folder.
 argument-hint: "[domain-name]"
 disable-model-invocation: true
 ---

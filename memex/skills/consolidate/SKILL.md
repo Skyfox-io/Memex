@@ -1,12 +1,9 @@
 ---
 name: consolidate
 description: >
-  Sweep the workspace for drift -- duplicate files, unannotated decision supersessions,
-  orphans, and bloated decisions logs -- on a separate cadence from session-end. Use after
-  a multi-agent push, before a milestone, daily on heavily-used workspaces, when
-  /memex:lint flags long-standing drift, or when the user says "clean up", "consolidate",
-  or "find duplicates". Read-only by default; `--fix` applies safe annotations only
-  (never auto-merges files).
+  Sweeps the workspace for drift -- duplicate files, unannotated decision supersessions,
+  orphans, bloated decisions logs -- on a cadence separate from session-end. Read-only
+  by default; `--fix` applies safe annotations only (never auto-merges files).
 argument-hint: "[--fix] [--force]"
 disable-model-invocation: true
 ---

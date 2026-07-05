@@ -1,11 +1,8 @@
 ---
 name: link-workspace
 description: >
-  Trigger when the user wants this Memex workspace to become searchable
-  from their other workspaces; e.g., "register this workspace", "add
-  this to my Memex sources", or any setup step where they're about to
-  use `/memex:cross-search` from a different workspace and need this one
-  on the registry first.
+  Registers this Memex workspace in the global source registry so it's searchable
+  from your other workspaces via `/memex:cross-search`.
 argument-hint: "[source-name]"
 disable-model-invocation: true
 ---
